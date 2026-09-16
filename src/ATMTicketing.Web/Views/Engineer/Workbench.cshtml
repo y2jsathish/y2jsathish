@@ -1,0 +1,43 @@
+@model IReadOnlyList<TicketListItemDto>
+@{
+    ViewData["Title"] = "My Workbench";
+}
+
+<h5 class="mb-3">My Assigned Tickets</h5>
+
+<div class="row g-3">
+    @foreach (var t in Model)
+    {
+        <div class="col-md-6 col-lg-4">
+            <div class="card h-100">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <a asp-controller="Ticket" asp-action="Details" asp-route-id="@t.Id" class="fw-semibold">@t.TicketNumber</a>
+                        <span class="status-badge" style="background:@t.StatusColor">@t.Status</span>
+                    </div>
+                    <div class="small text-muted mt-1">@t.AtmCode — @t.AtmName</div>
+                    <div class="small mt-1"><span class="priority-@t.Priority">@t.Priority</span> &middot; @t.Category</div>
+                    <div class="small mt-2">
+                        @if (t.ResolutionDueAt.HasValue)
+                        {
+                            <span>SLA:
+                                @if (t.IsResolutionBreached)
+                                {
+                                    <span class="sla-countdown breached">Breached</span>
+                                }
+                                else
+                                {
+                                    <span class="sla-countdown" data-sla-due="@t.ResolutionDueAt.Value.ToString("o")"></span>
+                                }
+                            </span>
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (!Model.Any())
+    {
+        <p class="text-muted">No open tickets assigned to you right now.</p>
+    }
+</div>

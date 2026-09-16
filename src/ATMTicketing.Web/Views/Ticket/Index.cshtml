@@ -1,0 +1,103 @@
+@{
+    ViewData["Title"] = "Tickets";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Tickets</h5>
+    @if (User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.CallCenterAgent) || User.IsInRole(Roles.TeamLead))
+    {
+        <a class="btn btn-primary btn-sm" asp-action="Create"><i class="bi bi-plus-circle"></i> New Ticket</a>
+    }
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="row g-2">
+            <div class="col-md-3">
+                <select id="filterStatus" class="form-select form-select-sm">
+                    <option value="">All Statuses</option>
+                    <option value="NEW">New</option>
+                    <option value="ASSIGNED">Assigned</option>
+                    <option value="IN_PROGRESS">In Progress</option>
+                    <option value="PENDING_PARTS">Pending Parts</option>
+                    <option value="PENDING_CUSTOMER">Pending Customer</option>
+                    <option value="ESCALATED">Escalated</option>
+                    <option value="RESOLVED">Resolved</option>
+                    <option value="CLOSED">Closed</option>
+                    <option value="CANCELLED">Cancelled</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <select id="filterPriority" class="form-select form-select-sm">
+                    <option value="">All Priorities</option>
+                    <option value="Critical">Critical</option>
+                    <option value="High">High</option>
+                    <option value="Medium">Medium</option>
+                    <option value="Low">Low</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <div class="form-check mt-2">
+                    <input type="checkbox" class="form-check-input" id="filterBreached" />
+                    <label class="form-check-label" for="filterBreached">SLA Breached only</label>
+                </div>
+            </div>
+            <div class="col-md-3 text-end">
+                <button class="btn btn-sm btn-outline-secondary" id="btnApplyFilter"><i class="bi bi-funnel"></i> Apply</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover table-sm w-100" id="ticketTable">
+            <thead>
+                <tr>
+                    <th>Ticket #</th><th>ATM</th><th>Category</th><th>Priority</th><th>Status</th>
+                    <th>Assigned To</th><th>Region</th><th>Created</th><th>SLA</th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    var table = $("#ticketTable").DataTable({
+        processing: true, serverSide: true,
+        ajax: {
+            url: "/Ticket/GetData", type: "POST",
+            data: function (d) {
+                return atmTicketing.mapDtParams(d, {
+                    Status: $("#filterStatus").val(),
+                    Priority: $("#filterPriority").val(),
+                    BreachedOnly: $("#filterBreached").is(":checked")
+                });
+            }
+        },
+        order: [[7, "desc"]],
+        columns: [
+            { data: "ticketNumber", render: function (d, t, row) { return '<a href="/Ticket/Details/' + row.id + '">' + d + '</a>'; } },
+            { data: "atmName" },
+            { data: "category" },
+            { data: "priority", render: function (d) { return '<span class="priority-' + d + '">' + d + '</span>'; } },
+            { data: "status", render: function (d, t, row) { return '<span class="status-badge" style="background:' + row.statusColor + '">' + d + '</span>'; } },
+            { data: "assignedToName", defaultContent: "<span class='text-muted'>Unassigned</span>" },
+            { data: "regionName" },
+            { data: "createdDate", render: function (d) { return new Date(d).toLocaleString(); } },
+            {
+                data: "resolutionDueAt", render: function (d, t, row) {
+                    if (!d) return "-";
+                    if (row.isResolutionBreached) return '<span class="sla-countdown breached">Breached</span>';
+                    return '<span class="sla-countdown" data-sla-due="' + d + '"></span>';
+                }
+            }
+        ]
+    });
+
+    $("#btnApplyFilter").on("click", function () { table.ajax.reload(); });
+});
+</script>
+}

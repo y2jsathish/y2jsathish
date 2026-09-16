@@ -1,0 +1,151 @@
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<div class="row g-3 mb-3">
+    <div class="col-6 col-lg-2">
+        <div class="kpi-tile kpi-primary">
+            <i class="bi bi-ticket-detailed kpi-icon"></i>
+            <div class="kpi-value" id="kpiTotal">-</div>
+            <div class="kpi-label">Total Tickets</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="kpi-tile kpi-info">
+            <i class="bi bi-folder2-open kpi-icon"></i>
+            <div class="kpi-value" id="kpiOpen">-</div>
+            <div class="kpi-label">Open Tickets</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="kpi-tile kpi-success">
+            <i class="bi bi-check-circle kpi-icon"></i>
+            <div class="kpi-value" id="kpiClosed">-</div>
+            <div class="kpi-label">Closed Tickets</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="kpi-tile kpi-danger">
+            <i class="bi bi-exclamation-octagon kpi-icon"></i>
+            <div class="kpi-value" id="kpiBreach">-</div>
+            <div class="kpi-label">SLA Breaches</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="kpi-tile kpi-warning">
+            <i class="bi bi-cash-coin kpi-icon"></i>
+            <div class="kpi-value" id="kpiAtmDown">-</div>
+            <div class="kpi-label">ATM Down</div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-2">
+        <div class="kpi-tile kpi-primary">
+            <i class="bi bi-percent kpi-icon"></i>
+            <div class="kpi-value" id="kpiCompliance">-</div>
+            <div class="kpi-label">SLA Compliance</div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-7">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Daily Ticket Trend (Created vs Resolved)</div>
+            <div class="card-body"><canvas id="dailyTrendChart" height="110"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-5">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Priority-wise Open Tickets</div>
+            <div class="card-body"><canvas id="priorityChart" height="110"></canvas></div>
+        </div>
+    </div>
+</div>
+
+<div class="row g-3 mb-3">
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Region-wise Tickets</div>
+            <div class="card-body"><canvas id="regionChart" height="140"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Vendor-wise Tickets</div>
+            <div class="card-body"><canvas id="vendorChart" height="140"></canvas></div>
+        </div>
+    </div>
+    <div class="col-lg-4">
+        <div class="card h-100">
+            <div class="card-header fw-semibold">Engineer Workload</div>
+            <div class="card-body p-0">
+                <table class="table table-sm mb-0" id="workloadTable">
+                    <thead><tr><th>Engineer</th><th>Open</th><th>Resolved Today</th></tr></thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    var palette = ["#0b3d91", "#1f7aeb", "#0f9d58", "#d97706", "#b91c1c", "#0e7490", "#7c3aed"];
+
+    fetch("/api/dashboard/summary").then(r => r.json()).then(function (s) {
+        $("#kpiTotal").text(s.totalTickets);
+        $("#kpiOpen").text(s.openTickets);
+        $("#kpiClosed").text(s.closedTickets);
+        $("#kpiBreach").text(s.slaBreaches);
+        $("#kpiAtmDown").text(s.atmDownCount);
+        $("#kpiCompliance").text(s.slaCompliancePercent + "%");
+    });
+
+    fetch("/api/dashboard/daily-trend?days=14").then(r => r.json()).then(function (points) {
+        new Chart(document.getElementById("dailyTrendChart"), {
+            type: "line",
+            data: {
+                labels: points.map(p => p.label),
+                datasets: [
+                    { label: "Created", data: points.map(p => p.created), borderColor: "#0b3d91", tension: 0.3 },
+                    { label: "Resolved", data: points.map(p => p.resolved), borderColor: "#0f9d58", tension: 0.3 }
+                ]
+            },
+            options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+        });
+    });
+
+    fetch("/api/dashboard/priority-wise").then(r => r.json()).then(function (data) {
+        new Chart(document.getElementById("priorityChart"), {
+            type: "doughnut",
+            data: { labels: data.map(d => d.name), datasets: [{ data: data.map(d => d.value), backgroundColor: palette }] },
+            options: { responsive: true, plugins: { legend: { position: "bottom" } } }
+        });
+    });
+
+    fetch("/api/dashboard/region-wise").then(r => r.json()).then(function (data) {
+        new Chart(document.getElementById("regionChart"), {
+            type: "bar",
+            data: { labels: data.map(d => d.name), datasets: [{ label: "Tickets", data: data.map(d => d.value), backgroundColor: "#1f7aeb" }] },
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+    });
+
+    fetch("/api/dashboard/vendor-wise").then(r => r.json()).then(function (data) {
+        new Chart(document.getElementById("vendorChart"), {
+            type: "bar",
+            data: { labels: data.map(d => d.name), datasets: [{ label: "Tickets", data: data.map(d => d.value), backgroundColor: "#0f9d58" }] },
+            options: { indexAxis: "y", responsive: true, plugins: { legend: { display: false } } }
+        });
+    });
+
+    fetch("/api/dashboard/engineer-workload").then(r => r.json()).then(function (rows) {
+        var body = $("#workloadTable tbody");
+        rows.forEach(function (r) {
+            body.append("<tr><td>" + r.engineerName + "</td><td>" + r.openTickets + "</td><td>" + r.resolvedToday + "</td></tr>");
+        });
+    });
+});
+</script>
+}

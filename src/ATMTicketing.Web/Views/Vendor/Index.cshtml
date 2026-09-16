@@ -1,0 +1,86 @@
+@{
+    ViewData["Title"] = "Vendor Master";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Vendor Master</h5>
+    @if (User.IsInRole(Roles.Administrator))
+    {
+        <button class="btn btn-primary btn-sm" id="btnAddVendor"><i class="bi bi-plus-circle"></i> Add Vendor</button>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover table-sm w-100" id="vendorTable">
+            <thead>
+                <tr><th>Code</th><th>Vendor Name</th><th>Contact Person</th><th>Phone</th><th>Email</th><th>Region</th><th>ATMs</th><th></th></tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="vendorModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" id="vendorModalContent"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    var table = $("#vendorTable").DataTable({
+        processing: true, serverSide: true,
+        ajax: { url: "/Vendor/GetData", type: "POST", data: function (d) { return atmTicketing.mapDtParams(d); } },
+        columns: [
+            { data: "vendorCode" }, { data: "vendorName" }, { data: "contactPerson" },
+            { data: "contactNumber" }, { data: "email" }, { data: "serviceRegionName" }, { data: "atmCount" },
+            {
+                data: "id", orderable: false, render: function (id) {
+                    @if (User.IsInRole(Roles.Administrator))
+                    {
+                        <text>
+                        return '<button class="btn btn-sm btn-outline-primary btn-edit" data-id="' + id + '"><i class="bi bi-pencil"></i></button> ' +
+                               '<button class="btn btn-sm btn-outline-danger btn-delete" data-id="' + id + '"><i class="bi bi-trash"></i></button>';
+                        </text>
+                    }
+                    else
+                    {
+                        <text>return "";</text>
+                    }
+                }
+            }
+        ]
+    });
+
+    function openModal(url) {
+        $.get(url, function (html) {
+            $("#vendorModalContent").html(html);
+            $("#vendorModal").modal("show");
+        });
+    }
+
+    $("#btnAddVendor").on("click", function () { openModal("/Vendor/Create"); });
+    $("#vendorTable").on("click", ".btn-edit", function () { openModal("/Vendor/Edit/" + $(this).data("id")); });
+    $("#vendorTable").on("click", ".btn-delete", function () {
+        if (!confirm("Delete this vendor?")) return;
+        $.post("/Vendor/Delete", { id: $(this).data("id") }, function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) table.ajax.reload();
+        });
+    });
+
+    $(document).on("submit", "#vendorForm", function (e) {
+        e.preventDefault();
+        var form = $(this);
+        $.post(form.attr("action"), form.serialize(), function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) {
+                $("#vendorModal").modal("hide");
+                table.ajax.reload();
+            }
+        });
+    });
+});
+</script>
+}

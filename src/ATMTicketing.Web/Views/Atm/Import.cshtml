@@ -1,0 +1,24 @@
+@{
+    ViewData["Title"] = "Import ATM Data";
+}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-2"><i class="bi bi-file-earmark-excel"></i> Import ATM Data from Excel</h5>
+                <p class="text-muted small">
+                    Upload an .xlsx file with header row: <code>AtmCode | AtmName | BankName | Region | Zone | State | City | Address | VendorCode | AtmType | Status</code>.
+                    Existing ATM codes are updated; new codes are inserted.
+                </p>
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                <form asp-action="Import" method="post" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <input type="file" name="file" class="form-control" accept=".xlsx" required />
+                    </div>
+                    <button type="submit" class="btn btn-primary"><i class="bi bi-upload"></i> Upload &amp; Import</button>
+                    <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>

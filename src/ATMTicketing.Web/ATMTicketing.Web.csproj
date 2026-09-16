@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ATMTicketing.Web</RootNamespace>
+    <UserSecretsId>a1c1f6d4-9f1c-4a2b-8b0e-atm-ticketing-web</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="8.0.10" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="8.0.10">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ATMTicketing.Domain\ATMTicketing.Domain.csproj" />
+    <ProjectReference Include="..\ATMTicketing.Application\ATMTicketing.Application.csproj" />
+    <ProjectReference Include="..\ATMTicketing.Infrastructure\ATMTicketing.Infrastructure.csproj" />
+  </ItemGroup>
+
+</Project>

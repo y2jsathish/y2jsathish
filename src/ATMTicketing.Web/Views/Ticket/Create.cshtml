@@ -1,0 +1,99 @@
+@model TicketCreateDto
+@{
+    ViewData["Title"] = "New Ticket";
+}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header fw-semibold"><i class="bi bi-plus-circle"></i> Log a New ATM Incident</div>
+            <div class="card-body">
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                <form asp-action="Create" method="post">
+                    <div class="row g-3">
+                        <div class="col-md-6 position-relative">
+                            <label class="form-label">ATM (search by code / name / city)</label>
+                            <input type="text" id="atmSearchBox" class="form-control" placeholder="Type at least 2 characters..." autocomplete="off" />
+                            <input type="hidden" asp-for="AtmId" id="AtmIdHidden" />
+                            <div id="atmSuggestions" class="list-group position-absolute w-100" style="z-index: 1000;"></div>
+                            <span asp-validation-for="AtmId" class="text-danger small"></span>
+                            <div class="small text-muted mt-1" id="atmSelectedInfo"></div>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="IncidentType" class="form-label">Incident Type</label>
+                            <input asp-for="IncidentType" class="form-control" placeholder="e.g. Hardware fault" />
+                            <span asp-validation-for="IncidentType" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CategoryId" class="form-label">Category</label>
+                            <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.Categories"><option value="">-- Select --</option></select>
+                            <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="SubCategory" class="form-label">Sub-Category (optional)</label>
+                            <input asp-for="SubCategory" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Priority" class="form-label">Priority</label>
+                            <select asp-for="Priority" class="form-select" asp-items="Html.GetEnumSelectList<ATMTicketing.Domain.Enums.PriorityLevel>()"></select>
+                            <span asp-validation-for="Priority" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactPerson" class="form-label">Contact Person</label>
+                            <input asp-for="ContactPerson" class="form-control" />
+                            <span asp-validation-for="ContactPerson" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactNumber" class="form-label">Contact Number</label>
+                            <input asp-for="ContactNumber" class="form-control" />
+                            <span asp-validation-for="ContactNumber" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-send"></i> Create Ticket</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+<script>
+$(function () {
+    var box = $("#atmSearchBox");
+    var suggestions = $("#atmSuggestions");
+
+    box.on("input", function () {
+        var term = $(this).val();
+        if (term.length < 2) { suggestions.empty(); return; }
+        $.get("/Atm/Search", { term: term }, function (results) {
+            suggestions.empty();
+            results.forEach(function (a) {
+                var item = $('<button type="button" class="list-group-item list-group-item-action"></button>')
+                    .text(a.atmCode + " — " + a.atmName + " (" + a.city + ")")
+                    .on("click", function () {
+                        $("#AtmIdHidden").val(a.id);
+                        box.val(a.atmCode + " — " + a.atmName);
+                        $("#atmSelectedInfo").text("Vendor: " + a.vendorName + " | Region: " + a.regionName);
+                        suggestions.empty();
+                    });
+                suggestions.append(item);
+            });
+        });
+    });
+
+    $(document).on("click", function (e) {
+        if (!$(e.target).closest("#atmSearchBox, #atmSuggestions").length) {
+            suggestions.empty();
+        }
+    });
+});
+</script>
+}

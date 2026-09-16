@@ -1,0 +1,28 @@
+@model IReadOnlyList<SlaComplianceReportRow>
+@{
+    ViewData["Title"] = "SLA Compliance Report";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">SLA Compliance Report</h5>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-success" href="@Url.Action("ExportSlaCompliance", new { format = "excel" })"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-sm btn-outline-danger" href="@Url.Action("ExportSlaCompliance", new { format = "pdf" })"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        <table class="table table-sm table-striped">
+            <thead><tr><th>Priority</th><th>Total</th><th>Met SLA</th><th>Breached</th><th>Compliance %</th></tr></thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td><span class="priority-@r.Priority">@r.Priority</span></td>
+                    <td>@r.TotalTickets</td><td>@r.MetSla</td><td>@r.Breached</td>
+                    <td>@r.CompliancePercent.ToString("0.0")%</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

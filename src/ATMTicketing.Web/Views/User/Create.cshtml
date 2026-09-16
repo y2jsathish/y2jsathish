@@ -1,0 +1,51 @@
+@model UserCreateDto
+@{
+    ViewData["Title"] = "Add User";
+}
+<div class="row justify-content-center">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-body p-4">
+                <h5 class="fw-bold mb-3">Add User</h5>
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                <form asp-action="Create" method="post">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="FullName" class="form-label"></label>
+                            <input asp-for="FullName" class="form-control" />
+                            <span asp-validation-for="FullName" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Email" class="form-label"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="EmployeeCode" class="form-label"></label>
+                            <input asp-for="EmployeeCode" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="RegionId" class="form-label">Region</label>
+                            <select asp-for="RegionId" class="form-select" asp-items="ViewBag.Regions"><option value="">-- None --</option></select>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Role" class="form-label"></label>
+                            <select asp-for="Role" class="form-select" asp-items="ViewBag.Roles"><option value="">-- Select --</option></select>
+                            <span asp-validation-for="Role" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Password" class="form-label"></label>
+                            <input asp-for="Password" class="form-control" type="password" />
+                            <span asp-validation-for="Password" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">Create User</button>
+                        <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+@section Scripts { <partial name="_ValidationScriptsPartial" /> }

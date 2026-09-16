@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ATMTicketing.Domain</RootNamespace>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Provides IdentityUser<TKey>/IdentityRole<TKey> for use in a non-web class library -->
+    <PackageReference Include="Microsoft.Extensions.Identity.Stores" Version="8.0.10" />
+  </ItemGroup>
+
+</Project>

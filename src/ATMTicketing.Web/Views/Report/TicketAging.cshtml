@@ -1,0 +1,28 @@
+@model IReadOnlyList<TicketAgingReportRow>
+@{
+    ViewData["Title"] = "Ticket Aging Report";
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Ticket Aging Report</h5>
+    <div class="d-flex gap-2">
+        <a class="btn btn-sm btn-outline-success" href="@Url.Action("ExportTicketAging", new { format = "excel" })"><i class="bi bi-file-earmark-excel"></i> Excel</a>
+        <a class="btn btn-sm btn-outline-danger" href="@Url.Action("ExportTicketAging", new { format = "pdf" })"><i class="bi bi-file-earmark-pdf"></i> PDF</a>
+    </div>
+</div>
+<div class="card">
+    <div class="card-body">
+        <table class="table table-sm table-striped">
+            <thead><tr><th>Ticket #</th><th>ATM</th><th>Priority</th><th>Status</th><th>Age (hrs)</th><th>Assigned To</th></tr></thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                <tr class="@(r.AgeInHours > 48 ? "table-warning" : "")">
+                    <td>@r.TicketNumber</td><td>@r.AtmCode</td>
+                    <td><span class="priority-@r.Priority">@r.Priority</span></td><td>@r.Status</td>
+                    <td>@r.AgeInHours</td><td>@(r.AssignedTo ?? "-")</td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>

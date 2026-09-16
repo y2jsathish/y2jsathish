@@ -1,0 +1,61 @@
+@model IReadOnlyList<EngineerWorkloadDto>
+@{
+    ViewData["Title"] = "Assignment Board";
+}
+
+<h5 class="mb-3">Engineer Assignment &amp; Workload</h5>
+
+<div class="row g-3 mb-4">
+    @foreach (var w in Model)
+    {
+        <div class="col-md-4 col-lg-3">
+            <div class="card h-100">
+                <div class="card-body">
+                    <h6 class="fw-semibold">@w.EngineerName</h6>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Open</span><span class="fw-semibold text-dark">@w.OpenTickets</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>In Progress</span><span class="fw-semibold text-dark">@w.InProgressTickets</span>
+                    </div>
+                    <div class="d-flex justify-content-between small text-muted">
+                        <span>Resolved Today</span><span class="fw-semibold text-dark">@w.ResolvedToday</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    }
+    @if (!Model.Any())
+    {
+        <p class="text-muted">No tickets have been assigned yet.</p>
+    }
+</div>
+
+<div class="card">
+    <div class="card-header fw-semibold">Unassigned / Open Tickets Requiring Attention</div>
+    <div class="card-body">
+        <table class="table table-hover table-sm w-100" id="unassignedTable">
+            <thead><tr><th>Ticket #</th><th>ATM</th><th>Priority</th><th>Status</th><th>Assigned To</th><th>Action</th></tr></thead>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    var table = $("#unassignedTable").DataTable({
+        processing: true, serverSide: true,
+        ajax: { url: "/Ticket/GetData", type: "POST", data: function (d) { return atmTicketing.mapDtParams(d); } },
+        order: [[2, "asc"]],
+        columns: [
+            { data: "ticketNumber", render: function (d, t, row) { return '<a href="/Ticket/Details/' + row.id + '">' + d + '</a>'; } },
+            { data: "atmName" },
+            { data: "priority", render: function (d) { return '<span class="priority-' + d + '">' + d + '</span>'; } },
+            { data: "status", render: function (d, t, row) { return '<span class="status-badge" style="background:' + row.statusColor + '">' + d + '</span>'; } },
+            { data: "assignedToName", defaultContent: "<span class='text-muted'>Unassigned</span>" },
+            { data: "id", orderable: false, render: function (id) { return '<a href="/Ticket/Details/' + id + '" class="btn btn-sm btn-outline-primary">Assign</a>'; } }
+        ]
+    });
+});
+</script>
+}

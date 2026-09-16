@@ -1,0 +1,25 @@
+@model IReadOnlyList<AtmImportRowResult>
+@{
+    ViewData["Title"] = "Import Result";
+    var successCount = Model.Count(r => r.Success);
+    var failCount = Model.Count - successCount;
+}
+<h5 class="mb-3">Import Result</h5>
+<div class="alert alert-info">
+    Processed @Model.Count row(s): <strong class="text-success">@successCount succeeded</strong>, <strong class="text-danger">@failCount failed</strong>.
+</div>
+<table class="table table-sm table-striped">
+    <thead><tr><th>Row</th><th>ATM Code</th><th>Result</th><th>Error</th></tr></thead>
+    <tbody>
+    @foreach (var row in Model)
+    {
+        <tr class="@(row.Success ? "" : "table-danger")">
+            <td>@row.RowNumber</td>
+            <td>@row.AtmCode</td>
+            <td>@(row.Success ? "Success" : "Failed")</td>
+            <td>@row.Error</td>
+        </tr>
+    }
+    </tbody>
+</table>
+<a class="btn btn-primary" asp-action="Index">Back to ATM Master</a>

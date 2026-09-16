@@ -1,0 +1,46 @@
+@model IReadOnlyList<SlaConfigurationDto>
+@{
+    ViewData["Title"] = "SLA Configuration";
+}
+
+<h5 class="mb-3">SLA Configuration</h5>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table" id="slaConfigTable">
+            <thead><tr><th>Priority</th><th>Response Time (min)</th><th>Resolution Time (min)</th><th>Warning Threshold (%)</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var c in Model)
+            {
+                <tr>
+                    <td class="fw-semibold priority-@c.Priority">@c.Priority</td>
+                    <td><input type="number" class="form-control form-control-sm response-input" value="@c.ResponseMinutes" min="1" /></td>
+                    <td><input type="number" class="form-control form-control-sm resolution-input" value="@c.ResolutionMinutes" min="1" /></td>
+                    <td><input type="number" class="form-control form-control-sm warning-input" value="@c.WarningThresholdPercent" min="1" max="100" /></td>
+                    <td><button class="btn btn-sm btn-primary btn-save" data-id="@c.Id" data-priority="@((int)c.Priority)">Save</button></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    $("#slaConfigTable").on("click", ".btn-save", function () {
+        var row = $(this).closest("tr");
+        var data = {
+            Id: $(this).data("id"),
+            Priority: $(this).data("priority"),
+            ResponseMinutes: row.find(".response-input").val(),
+            ResolutionMinutes: row.find(".resolution-input").val(),
+            WarningThresholdPercent: row.find(".warning-input").val()
+        };
+        $.post("/Sla/Configuration", data, function (result) {
+            atmTicketing.showResult(result);
+        });
+    });
+});
+</script>
+}

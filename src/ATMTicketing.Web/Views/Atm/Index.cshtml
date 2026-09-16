@@ -1,0 +1,97 @@
+@{
+    ViewData["Title"] = "ATM Master";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">ATM Master</h5>
+    <div class="d-flex gap-2">
+        @if (User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.TeamLead))
+        {
+            <a class="btn btn-outline-secondary btn-sm" asp-action="Import"><i class="bi bi-file-earmark-excel"></i> Import Excel</a>
+            <button class="btn btn-primary btn-sm" id="btnAddAtm"><i class="bi bi-plus-circle"></i> Add ATM</button>
+        }
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover table-sm w-100" id="atmTable">
+            <thead>
+                <tr>
+                    <th>ATM Code</th><th>Name</th><th>Bank</th><th>Region</th><th>City</th>
+                    <th>Vendor</th><th>Type</th><th>Status</th><th>Open Tickets</th><th></th>
+                </tr>
+            </thead>
+        </table>
+    </div>
+</div>
+
+<div class="modal fade" id="atmModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content" id="atmModalContent"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    var table = $("#atmTable").DataTable({
+        processing: true,
+        serverSide: true,
+        ajax: { url: "/Atm/GetData", type: "POST", data: function (d) { return atmTicketing.mapDtParams(d); } },
+        columns: [
+            { data: "atmCode" }, { data: "atmName" }, { data: "bankName" }, { data: "regionName" },
+            { data: "city" }, { data: "vendorName" }, { data: "atmType" },
+            {
+                data: "status", render: function (d) {
+                    var color = d === "Active" ? "#0f9d58" : (d === "UnderMaintenance" ? "#d97706" : "#6b7280");
+                    return '<span class="status-badge" style="background:' + color + '">' + d + '</span>';
+                }
+            },
+            { data: "openTicketCount" },
+            {
+                data: "id", orderable: false, render: function (id) {
+                    var html = '<button class="btn btn-sm btn-outline-primary btn-edit" data-id="' + id + '"><i class="bi bi-pencil"></i></button>';
+                    @if (User.IsInRole(Roles.Administrator))
+                    {
+                        <text>html += ' <button class="btn btn-sm btn-outline-danger btn-delete" data-id="' + id + '"><i class="bi bi-trash"></i></button>';</text>
+                    }
+                    return html;
+                }
+            }
+        ]
+    });
+
+    function openModal(url) {
+        $.get(url, function (html) {
+            $("#atmModalContent").html(html);
+            $("#atmModal").modal("show");
+        });
+    }
+
+    $("#btnAddAtm").on("click", function () { openModal("/Atm/Create"); });
+    $("#atmTable").on("click", ".btn-edit", function () { openModal("/Atm/Edit/" + $(this).data("id")); });
+
+    $("#atmTable").on("click", ".btn-delete", function () {
+        if (!confirm("Delete this ATM? This is only possible when it has no ticket history.")) return;
+        var id = $(this).data("id");
+        $.post("/Atm/Delete", { id: id }, function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) table.ajax.reload();
+        });
+    });
+
+    $(document).on("submit", "#atmForm", function (e) {
+        e.preventDefault();
+        var form = $(this);
+        $.post(form.attr("action"), form.serialize(), function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) {
+                $("#atmModal").modal("hide");
+                table.ajax.reload();
+            }
+        });
+    });
+});
+</script>
+}

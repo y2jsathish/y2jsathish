@@ -1,0 +1,46 @@
+@model IReadOnlyList<SlaDashboardTicketDto>
+@{
+    ViewData["Title"] = "SLA Dashboard";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">SLA Dashboard</h5>
+    @if (User.IsInRole(Roles.Administrator))
+    {
+        <a class="btn btn-outline-secondary btn-sm" asp-action="Configuration"><i class="bi bi-sliders"></i> Configure SLA</a>
+    }
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover table-sm">
+            <thead><tr><th>Ticket #</th><th>ATM</th><th>Priority</th><th>Status</th><th>Resolution Due</th><th>Time Remaining</th></tr></thead>
+            <tbody>
+            @foreach (var t in Model)
+            {
+                <tr class="@(t.IsBreached ? "table-danger" : "")">
+                    <td><a asp-controller="Ticket" asp-action="Details" asp-route-id="@t.Id">@t.TicketNumber</a></td>
+                    <td>@t.AtmCode</td>
+                    <td><span class="priority-@t.Priority">@t.Priority</span></td>
+                    <td>@t.Status</td>
+                    <td>@(t.ResolutionDueAt?.ToLocalTime().ToString("g") ?? "-")</td>
+                    <td>
+                        @if (t.IsBreached)
+                        {
+                            <span class="sla-countdown breached">Breached</span>
+                        }
+                        else if (t.ResolutionDueAt.HasValue)
+                        {
+                            <span class="sla-countdown" data-sla-due="@t.ResolutionDueAt.Value.ToString("o")"></span>
+                        }
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        @if (!Model.Any())
+        {
+            <p class="text-muted mb-0">No open tickets.</p>
+        }
+    </div>
+</div>

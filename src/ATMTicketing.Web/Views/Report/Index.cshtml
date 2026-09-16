@@ -1,0 +1,31 @@
+@{
+    ViewData["Title"] = "Reports";
+    var reports = new (string Title, string Action, string Icon)[]
+    {
+        ("Ticket Summary Report", "TicketSummary", "bi-file-earmark-text"),
+        ("Ticket Aging Report", "TicketAging", "bi-hourglass-split"),
+        ("SLA Compliance Report", "SlaCompliance", "bi-stopwatch"),
+        ("ATM Uptime / Downtime Report", "AtmUptime", "bi-cash-stack"),
+        ("Engineer Performance Report", "EngineerPerformance", "bi-person-badge"),
+        ("Vendor Performance Report", "VendorPerformance", "bi-truck"),
+        ("Regional Analysis Report", "RegionalAnalysis", "bi-geo-alt")
+    };
+}
+
+<h5 class="mb-3">Reports</h5>
+<div class="row g-3">
+    @foreach (var r in reports)
+    {
+        <div class="col-md-6 col-lg-4">
+            <a class="card text-decoration-none h-100" asp-action="@r.Action">
+                <div class="card-body d-flex align-items-center gap-3">
+                    <i class="bi @r.Icon text-primary" style="font-size: 1.8rem;"></i>
+                    <div>
+                        <div class="fw-semibold text-body">@r.Title</div>
+                        <div class="small text-muted">View, filter, and export to Excel/PDF</div>
+                    </div>
+                </div>
+            </a>
+        </div>
+    }
+</div>

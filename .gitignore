@@ -1,0 +1,28 @@
+## .NET
+bin/
+obj/
+*.user
+*.suo
+.vs/
+*.userosscache
+*.sln.docstates
+
+## Publish
+publish/
+*.pubxml
+
+## Rider / VSCode
+.idea/
+.vscode/
+
+## Logs
+logs/
+*.log
+
+## Secrets
+appsettings.*.local.json
+*.pfx
+
+## OS
+.DS_Store
+Thumbs.db
