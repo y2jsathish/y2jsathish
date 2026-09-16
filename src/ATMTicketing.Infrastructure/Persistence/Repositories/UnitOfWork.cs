@@ -1,6 +1,5 @@
 using ATMTicketing.Application.Interfaces.Repositories;
 using ATMTicketing.Domain.Entities;
-using Microsoft.EntityFrameworkCore;
 
 namespace ATMTicketing.Infrastructure.Persistence.Repositories;
 
@@ -40,14 +39,6 @@ public class UnitOfWork : IUnitOfWork
     public IGenericRepository<AuditLog> AuditLogs => _auditLogs ??= new GenericRepository<AuditLog>(_context);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default) => _context.SaveChangesAsync(ct);
-
-    public async Task<long> GetNextTicketSequenceAsync(CancellationToken ct = default)
-    {
-        var result = await _context.Database
-            .SqlQueryRaw<long>("SELECT NEXT VALUE FOR dbo.TicketNumberSequence AS [Value]")
-            .ToListAsync(ct);
-        return result[0];
-    }
 
     public void Dispose()
     {

@@ -15,7 +15,13 @@ public static class DbInitializer
         RoleManager<ApplicationRole> roleManager,
         ILogger logger)
     {
-        await context.Database.MigrateAsync();
+        // Only relational providers (SQL Server in production) support migrations; the
+        // in-memory provider used by integration tests creates its schema from the model
+        // directly, so skip this step there rather than throwing.
+        if (context.Database.IsRelational())
+        {
+            await context.Database.MigrateAsync();
+        }
 
         foreach (var roleName in Roles.All)
         {

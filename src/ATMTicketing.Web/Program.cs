@@ -108,3 +108,7 @@ app.MapControllerRoute(
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.Run();
+
+// Makes the top-level Program class accessible to WebApplicationFactory<Program>
+// in the integration test project (see tests/ATMTicketing.Tests/EndToEnd).
+public partial class Program;

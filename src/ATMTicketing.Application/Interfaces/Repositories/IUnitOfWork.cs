@@ -18,7 +18,4 @@ public interface IUnitOfWork : IDisposable
     IGenericRepository<AuditLog> AuditLogs { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
-
-    /// <summary>Atomically reserves the next value of the DB-level TicketNumberSequence.</summary>
-    Task<long> GetNextTicketSequenceAsync(CancellationToken ct = default);
 }

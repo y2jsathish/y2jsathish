@@ -22,6 +22,7 @@ ATMTicketing.sln
 ├── src/ATMTicketing.Application     # DTOs, service/repository interfaces
 ├── src/ATMTicketing.Infrastructure  # EF Core, repositories, services, SLA monitor
 ├── src/ATMTicketing.Web             # MVC controllers, Razor views, REST API
+├── tests/ATMTicketing.Tests         # xUnit: service-layer unit tests + real HTTP end-to-end tests
 ├── database/                        # Hand-written SQL Server schema, indexes, SPs, views, seed data
 └── docs/                            # Architecture, deployment, security, hosting, API reference
 ```
@@ -41,6 +42,29 @@ dotnet run --project src/ATMTicketing.Web
 
 Default seeded login: `admin@atmticketing.local` / `Admin@12345`
 (**rotate before any shared/production use**).
+
+## Testing
+
+```bash
+dotnet test tests/ATMTicketing.Tests/ATMTicketing.Tests.csproj
+```
+
+Two layers, both runnable without a real SQL Server instance (EF Core's
+in-memory provider stands in for it):
+
+- **Unit tests** (`tests/ATMTicketing.Tests/Services/`) — exercise the
+  service layer (`SlaService`, `AssignmentService`, `TicketService`,
+  `DashboardService`) against a real `ApplicationDbContext` +
+  `UnitOfWork` + Identity `UserManager`/`RoleManager`, just backed by an
+  isolated in-memory database per test instead of SQL Server.
+- **End-to-end tests** (`tests/ATMTicketing.Tests/EndToEnd/`) — boot the
+  actual `ATMTicketing.Web` app in-process via `WebApplicationFactory`
+  and drive it with real HTTP requests: login, RBAC-gated pages,
+  antiforgery-protected form posts, the DataTables JSON endpoints the UI
+  calls, and the JWT-secured REST API — the same code paths a browser or
+  external client would hit, without needing a live database or browser.
+
+36 tests total (27 unit + 9 end-to-end), all currently passing.
 
 ## Roles
 

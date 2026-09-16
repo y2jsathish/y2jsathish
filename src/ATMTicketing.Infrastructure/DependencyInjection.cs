@@ -36,6 +36,7 @@ public static class DependencyInjection
             .AddDefaultTokenProviders();
 
         services.AddScoped<IUnitOfWork, UnitOfWork>();
+        services.AddScoped<ITicketNumberGenerator, SqlSequenceTicketNumberGenerator>();
 
         services.AddScoped<ITicketService, TicketService>();
         services.AddScoped<IAtmService, AtmService>();

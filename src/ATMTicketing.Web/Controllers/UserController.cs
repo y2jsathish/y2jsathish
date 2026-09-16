@@ -36,7 +36,7 @@ public class UserController : Controller
                 Email = user.Email ?? string.Empty,
                 EmployeeCode = user.EmployeeCode,
                 RegionName = user.Region?.RegionName,
-                Roles = roles,
+                Roles = roles.ToList(),
                 IsActive = user.IsActive,
                 LastLoginDate = user.LastLoginDate
             });

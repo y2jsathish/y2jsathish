@@ -7,6 +7,13 @@
     <RootNamespace>ATMTicketing.Infrastructure</RootNamespace>
   </PropertyGroup>
 
+  <!-- Needed for AddIdentity<>/BackgroundService/IdentityUserRole<> etc. — this is a plain
+       class library (not Sdk.Web), so the ASP.NET Core shared framework must be pulled in
+       explicitly rather than coming for free the way it does in the Web project. -->
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="Microsoft.EntityFrameworkCore.SqlServer" Version="8.0.10" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" Version="8.0.10">

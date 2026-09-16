@@ -15,19 +15,22 @@ public class TicketService : ITicketService
     private readonly IAssignmentService _assignmentService;
     private readonly INotificationService _notificationService;
     private readonly ICurrentUserService _currentUser;
+    private readonly ITicketNumberGenerator _ticketNumberGenerator;
 
     public TicketService(
         IUnitOfWork uow,
         ISlaService slaService,
         IAssignmentService assignmentService,
         INotificationService notificationService,
-        ICurrentUserService currentUser)
+        ICurrentUserService currentUser,
+        ITicketNumberGenerator ticketNumberGenerator)
     {
         _uow = uow;
         _slaService = slaService;
         _assignmentService = assignmentService;
         _notificationService = notificationService;
         _currentUser = currentUser;
+        _ticketNumberGenerator = ticketNumberGenerator;
     }
 
     public async Task<ServiceResult<TicketDetailsDto>> CreateAsync(TicketCreateDto dto, CancellationToken ct = default)
@@ -45,7 +48,7 @@ public class TicketService : ITicketService
 
         var now = DateTime.UtcNow;
         var (responseDue, resolutionDue) = _slaService.CalculateDueDates(dto.Priority, now);
-        var sequence = await _uow.GetNextTicketSequenceAsync(ct);
+        var sequence = await _ticketNumberGenerator.NextAsync(ct);
         var ticketNumber = $"TCK-{now:yyyyMM}-{sequence:D6}";
 
         var ticket = new Ticket
