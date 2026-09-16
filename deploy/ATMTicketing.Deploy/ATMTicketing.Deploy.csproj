@@ -1,0 +1,38 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net8.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <RootNamespace>ATMTicketing.Deploy</RootNamespace>
+    <AssemblyName>ATMTicketing.Deploy</AssemblyName>
+
+    <!-- This tool only ever runs on the target Windows/IIS/SQL Server machine, so it is
+         built and published specifically for win-x64, self-contained + single-file, so the
+         person running it needs nothing pre-installed (not even the .NET runtime) to launch
+         the installer itself. Building/publishing THIS project still requires the .NET 8 SDK
+         (see deploy/README.md), but the resulting Deploy.exe does not. -->
+    <RuntimeIdentifier>win-x64</RuntimeIdentifier>
+    <SelfContained>true</SelfContained>
+    <PublishSingleFile>true</PublishSingleFile>
+    <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
+    <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
+    <InvariantGlobalization>true</InvariantGlobalization>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Data.SqlClient" Version="5.2.2" />
+  </ItemGroup>
+
+  <!-- Single source of truth: embeds the same hand-authored schema scripts the repo ships
+       under database/, so the installer never drifts from them. -->
+  <ItemGroup>
+    <EmbeddedResource Include="../../database/01_Schema.sql" LogicalName="01_Schema.sql" />
+    <EmbeddedResource Include="../../database/02_Indexes.sql" LogicalName="02_Indexes.sql" />
+    <EmbeddedResource Include="../../database/03_StoredProcedures.sql" LogicalName="03_StoredProcedures.sql" />
+    <EmbeddedResource Include="../../database/04_Views.sql" LogicalName="04_Views.sql" />
+    <EmbeddedResource Include="../../database/05_SeedData.sql" LogicalName="05_SeedData.sql" />
+  </ItemGroup>
+
+</Project>

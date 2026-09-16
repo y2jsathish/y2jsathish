@@ -24,8 +24,12 @@ ATMTicketing.sln
 ├── src/ATMTicketing.Web             # MVC controllers, Razor views, REST API
 ├── tests/ATMTicketing.Tests         # xUnit: service-layer unit tests + real HTTP end-to-end tests
 ├── database/                        # Hand-written SQL Server schema, indexes, SPs, views, seed data
+├── deploy/ATMTicketing.Deploy       # Windows installer: publish + provision SQL Server + configure IIS
 └── docs/                            # Architecture, deployment, security, hosting, API reference
 ```
+
+To deploy to your own IIS + SQL Server machine, see
+[`deploy/README.md`](deploy/README.md) for a one-command Windows installer.
 
 See [`docs/01-Architecture.md`](docs/01-Architecture.md) for the full
 design, [`docs/02-Deployment-Guide.md`](docs/02-Deployment-Guide.md) to
