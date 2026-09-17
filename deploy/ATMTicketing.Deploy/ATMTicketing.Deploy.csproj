@@ -18,7 +18,10 @@
     <PublishSingleFile>true</PublishSingleFile>
     <IncludeNativeLibrariesForSelfExtract>true</IncludeNativeLibrariesForSelfExtract>
     <EnableCompressionInSingleFile>true</EnableCompressionInSingleFile>
-    <InvariantGlobalization>true</InvariantGlobalization>
+    <!-- Microsoft.Data.SqlClient does not support Globalization Invariant Mode (it needs ICU
+         for collation/string comparison when talking to SQL Server) and throws at connection
+         time if it's enabled, so this must stay off despite the self-contained/single-file
+         publish otherwise wanting the smaller footprint invariant mode gives. -->
   </PropertyGroup>
 
   <ItemGroup>
