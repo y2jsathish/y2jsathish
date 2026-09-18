@@ -62,6 +62,8 @@ public class AtmConfiguration : IEntityTypeConfiguration<Atm>
         builder.Property(a => a.Address).HasMaxLength(300).IsRequired();
         builder.Property(a => a.Latitude).HasColumnType("decimal(9,6)");
         builder.Property(a => a.Longitude).HasColumnType("decimal(9,6)");
+        builder.Property(a => a.AtmType).HasConversion<byte>();
+        builder.Property(a => a.Status).HasConversion<byte>();
         builder.HasIndex(a => a.AtmCode).IsUnique();
         builder.HasIndex(a => new { a.RegionId, a.Status });
 
@@ -103,6 +105,7 @@ public class TicketConfiguration : IEntityTypeConfiguration<Ticket>
 {
     public void Configure(EntityTypeBuilder<Ticket> builder)
     {
+        builder.Property(t => t.Priority).HasConversion<byte>();
         builder.Property(t => t.TicketNumber).HasMaxLength(30).IsRequired();
         builder.Property(t => t.IncidentType).HasMaxLength(100).IsRequired();
         builder.Property(t => t.Description).HasMaxLength(2000).IsRequired();
@@ -154,6 +157,7 @@ public class TicketHistoryConfiguration : IEntityTypeConfiguration<TicketHistory
     public void Configure(EntityTypeBuilder<TicketHistory> builder)
     {
         builder.ToTable("TicketHistory");
+        builder.Property(h => h.ActionType).HasConversion<byte>();
         builder.Property(h => h.OldValue).HasMaxLength(500);
         builder.Property(h => h.NewValue).HasMaxLength(500);
         builder.Property(h => h.Notes).HasMaxLength(2000);
@@ -176,6 +180,7 @@ public class TicketAssignmentConfiguration : IEntityTypeConfiguration<TicketAssi
     public void Configure(EntityTypeBuilder<TicketAssignment> builder)
     {
         builder.ToTable("TicketAssignment");
+        builder.Property(a => a.AssignmentType).HasConversion<byte>();
         builder.HasIndex(a => new { a.TicketId, a.IsCurrent });
 
         builder.HasOne(a => a.Ticket)
@@ -221,6 +226,7 @@ public class SlaConfigurationEntityConfiguration : IEntityTypeConfiguration<SlaC
     public void Configure(EntityTypeBuilder<SlaConfiguration> builder)
     {
         builder.ToTable("SlaConfiguration");
+        builder.Property(s => s.Priority).HasConversion<byte>();
         builder.HasIndex(s => s.Priority).IsUnique();
     }
 }
@@ -230,6 +236,8 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
         builder.ToTable("Notification");
+        builder.Property(n => n.Channel).HasConversion<byte>();
+        builder.Property(n => n.Event).HasConversion<byte>();
         builder.Property(n => n.Subject).HasMaxLength(200).IsRequired();
         builder.Property(n => n.Message).HasMaxLength(2000).IsRequired();
         builder.HasIndex(n => new { n.UserId, n.IsRead });
