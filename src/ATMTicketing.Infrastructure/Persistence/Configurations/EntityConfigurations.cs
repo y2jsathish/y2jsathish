@@ -81,6 +81,7 @@ public class CategoryMasterConfiguration : IEntityTypeConfiguration<CategoryMast
 {
     public void Configure(EntityTypeBuilder<CategoryMaster> builder)
     {
+        builder.ToTable("CategoryMaster");
         builder.Property(c => c.Name).HasMaxLength(100).IsRequired();
         builder.HasIndex(c => c.Name).IsUnique();
     }
@@ -90,6 +91,7 @@ public class StatusMasterConfiguration : IEntityTypeConfiguration<StatusMaster>
 {
     public void Configure(EntityTypeBuilder<StatusMaster> builder)
     {
+        builder.ToTable("StatusMaster");
         builder.Property(s => s.Code).HasMaxLength(30).IsRequired();
         builder.Property(s => s.DisplayName).HasMaxLength(50).IsRequired();
         builder.Property(s => s.ColorHex).HasMaxLength(10).IsRequired();
@@ -151,6 +153,7 @@ public class TicketHistoryConfiguration : IEntityTypeConfiguration<TicketHistory
 {
     public void Configure(EntityTypeBuilder<TicketHistory> builder)
     {
+        builder.ToTable("TicketHistory");
         builder.Property(h => h.OldValue).HasMaxLength(500);
         builder.Property(h => h.NewValue).HasMaxLength(500);
         builder.Property(h => h.Notes).HasMaxLength(2000);
@@ -172,6 +175,7 @@ public class TicketAssignmentConfiguration : IEntityTypeConfiguration<TicketAssi
 {
     public void Configure(EntityTypeBuilder<TicketAssignment> builder)
     {
+        builder.ToTable("TicketAssignment");
         builder.HasIndex(a => new { a.TicketId, a.IsCurrent });
 
         builder.HasOne(a => a.Ticket)
@@ -195,6 +199,7 @@ public class TicketAttachmentConfiguration : IEntityTypeConfiguration<TicketAtta
 {
     public void Configure(EntityTypeBuilder<TicketAttachment> builder)
     {
+        builder.ToTable("TicketAttachment");
         builder.Property(a => a.FileName).HasMaxLength(260).IsRequired();
         builder.Property(a => a.StoredFilePath).HasMaxLength(500).IsRequired();
         builder.Property(a => a.FileType).HasMaxLength(50).IsRequired();
@@ -224,6 +229,7 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
 {
     public void Configure(EntityTypeBuilder<Notification> builder)
     {
+        builder.ToTable("Notification");
         builder.Property(n => n.Subject).HasMaxLength(200).IsRequired();
         builder.Property(n => n.Message).HasMaxLength(2000).IsRequired();
         builder.HasIndex(n => new { n.UserId, n.IsRead });
@@ -244,6 +250,7 @@ public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> builder)
     {
+        builder.ToTable("AuditLog");
         builder.Property(a => a.Action).HasMaxLength(100).IsRequired();
         builder.Property(a => a.EntityName).HasMaxLength(100).IsRequired();
         builder.Property(a => a.EntityId).HasMaxLength(50);
