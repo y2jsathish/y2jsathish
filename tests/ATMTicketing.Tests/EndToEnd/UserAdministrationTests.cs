@@ -39,7 +39,7 @@ public class UserAdministrationTests : IClassFixture<CustomWebApplicationFactory
         var indexHtml = await (await client.GetAsync("/User/Index")).Content.ReadAsStringAsync();
         var adminId = ExtractSeededAdminId(indexHtml);
 
-        var deleteResponse = await PostWithCsrfAsync(client, "/User/Delete", indexHtml, new Dictionary<string, string>
+        var deleteResponse = await HtmlHelpers.PostWithCsrfAsync(client, "/User/Delete", indexHtml, new Dictionary<string, string>
         {
             ["id"] = adminId
         });
@@ -47,21 +47,6 @@ public class UserAdministrationTests : IClassFixture<CustomWebApplicationFactory
         var result = await deleteResponse.Content.ReadFromJsonAsync<JsonElement>();
         result.GetProperty("succeeded").GetBoolean().Should().BeFalse();
         result.GetProperty("errors")[0].GetString().Should().Contain("own account");
-    }
-
-    /// <summary>Mirrors what site.js does for every AJAX POST: attach the antiforgery token
-    /// from the page's meta tag as the X-CSRF-TOKEN header, since these calls build their own
-    /// request body rather than serializing a Razor &lt;form&gt;'s hidden field.</summary>
-    private static async Task<HttpResponseMessage> PostWithCsrfAsync(
-        HttpClient client, string url, string pageHtmlWithToken, Dictionary<string, string> formData)
-    {
-        var token = HtmlHelpers.ExtractMetaAntiForgeryToken(pageHtmlWithToken);
-        using var request = new HttpRequestMessage(HttpMethod.Post, url)
-        {
-            Content = new FormUrlEncodedContent(formData)
-        };
-        request.Headers.Add("X-CSRF-TOKEN", token);
-        return await client.SendAsync(request);
     }
 
     [Fact]
@@ -89,7 +74,7 @@ public class UserAdministrationTests : IClassFixture<CustomWebApplicationFactory
         indexHtml.Should().Contain(email);
         var userId = ExtractUserIdByEmail(indexHtml, email);
 
-        var deleteResponse = await PostWithCsrfAsync(client, "/User/Delete", indexHtml, new Dictionary<string, string>
+        var deleteResponse = await HtmlHelpers.PostWithCsrfAsync(client, "/User/Delete", indexHtml, new Dictionary<string, string>
         {
             ["id"] = userId
         });

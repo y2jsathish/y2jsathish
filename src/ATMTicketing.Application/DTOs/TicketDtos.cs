@@ -30,6 +30,33 @@ public class TicketCreateDto
     public string ContactNumber { get; set; } = string.Empty;
 }
 
+public class TicketEditDto
+{
+    [Required]
+    public int Id { get; set; }
+
+    [Required, StringLength(100)]
+    public string IncidentType { get; set; } = string.Empty;
+
+    [Required]
+    public int CategoryId { get; set; }
+
+    [StringLength(100)]
+    public string? SubCategory { get; set; }
+
+    [Required]
+    public PriorityLevel Priority { get; set; }
+
+    [Required, StringLength(2000)]
+    public string Description { get; set; } = string.Empty;
+
+    [Required, StringLength(100)]
+    public string ContactPerson { get; set; } = string.Empty;
+
+    [Required, Phone, StringLength(20)]
+    public string ContactNumber { get; set; } = string.Empty;
+}
+
 public class TicketListItemDto
 {
     public int Id { get; set; }
@@ -66,6 +93,7 @@ public class TicketDetailsDto
     public string Description { get; set; } = string.Empty;
     public string ContactPerson { get; set; } = string.Empty;
     public string ContactNumber { get; set; } = string.Empty;
+    public int RegionId { get; set; }
     public string CreatedByName { get; set; } = string.Empty;
     public DateTime CreatedDate { get; set; }
     public string? AssignedToId { get; set; }
@@ -152,4 +180,16 @@ public class TicketFilterDto
     public DateTime? FromDate { get; set; }
     public DateTime? ToDate { get; set; }
     public bool? BreachedOnly { get; set; }
+}
+
+/// <summary>A candidate for the manual "Assign / Reassign" dropdown. Lists every active
+/// Field Engineer — not just ones who already have a ticket assigned — so a brand-new
+/// engineer or a system with no assignments yet still has someone to pick.</summary>
+public class EngineerOptionDto
+{
+    public string Id { get; set; } = string.Empty;
+    public string FullName { get; set; } = string.Empty;
+    public string? RegionName { get; set; }
+    public bool IsSameRegionAsTicket { get; set; }
+    public int OpenTicketCount { get; set; }
 }

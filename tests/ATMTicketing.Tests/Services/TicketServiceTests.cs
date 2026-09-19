@@ -109,6 +109,83 @@ public class TicketServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task UpdateAsync_ChangingPriority_RecalculatesSlaDueDatesFromOriginalCreatedDate()
+    {
+        var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
+        var agent = await _fixture.CreateUserAsync("agent@test.local", Roles.CallCenterAgent, region.Id);
+        _fixture.CurrentUser.UserId = agent.Id;
+        var sut = CreateSut();
+
+        var created = await sut.CreateAsync(new TicketCreateDto
+        {
+            AtmId = atm.Id, IncidentType = "Cash Jam", CategoryId = category.Id, Priority = PriorityLevel.Low,
+            Description = "n/a", ContactPerson = "n/a", ContactNumber = "0000000000"
+        });
+        var ticketId = created.Data!.Id;
+        var createdDate = created.Data.CreatedDate;
+
+        var result = await sut.UpdateAsync(new TicketEditDto
+        {
+            Id = ticketId, IncidentType = "Cash Jam", CategoryId = category.Id, Priority = PriorityLevel.Critical,
+            Description = "n/a", ContactPerson = "n/a", ContactNumber = "0000000000"
+        });
+
+        result.Succeeded.Should().BeTrue();
+        var details = await sut.GetDetailsAsync(ticketId);
+        details!.Priority.Should().Be("Critical");
+        // Critical = 120 minutes resolution, measured from the ORIGINAL creation time, not from the edit.
+        details.ResolutionDueAt.Should().BeCloseTo(createdDate.AddMinutes(120), TimeSpan.FromSeconds(5));
+        details.History.Should().Contain(h => h.Notes != null && h.Notes.Contains("Priority: Low -> Critical"));
+    }
+
+    [Fact]
+    public async Task UpdateAsync_Fails_OnClosedTicket()
+    {
+        var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
+        var agent = await _fixture.CreateUserAsync("agent@test.local", Roles.CallCenterAgent, region.Id);
+        _fixture.CurrentUser.UserId = agent.Id;
+        var sut = CreateSut();
+
+        var created = await sut.CreateAsync(new TicketCreateDto
+        {
+            AtmId = atm.Id, IncidentType = "Cash Jam", CategoryId = category.Id, Priority = PriorityLevel.Medium,
+            Description = "n/a", ContactPerson = "n/a", ContactNumber = "0000000000"
+        });
+        var ticketId = created.Data!.Id;
+        await sut.CloseAsync(new TicketCloseDto { TicketId = ticketId, ResolutionNotes = "done", ClosureRemarks = "done" });
+
+        var result = await sut.UpdateAsync(new TicketEditDto
+        {
+            Id = ticketId, IncidentType = "Changed", CategoryId = category.Id, Priority = PriorityLevel.Medium,
+            Description = "n/a", ContactPerson = "n/a", ContactNumber = "0000000000"
+        });
+
+        result.Succeeded.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetForEditAsync_ReturnsCurrentFieldValues()
+    {
+        var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
+        var agent = await _fixture.CreateUserAsync("agent@test.local", Roles.CallCenterAgent, region.Id);
+        _fixture.CurrentUser.UserId = agent.Id;
+        var sut = CreateSut();
+
+        var created = await sut.CreateAsync(new TicketCreateDto
+        {
+            AtmId = atm.Id, IncidentType = "Cash Jam", CategoryId = category.Id, Priority = PriorityLevel.High,
+            Description = "Jammed", ContactPerson = "Branch Manager", ContactNumber = "9999999999"
+        });
+
+        var editDto = await sut.GetForEditAsync(created.Data!.Id);
+
+        editDto.Should().NotBeNull();
+        editDto!.IncidentType.Should().Be("Cash Jam");
+        editDto.Priority.Should().Be(PriorityLevel.High);
+        editDto.ContactPerson.Should().Be("Branch Manager");
+    }
+
+    [Fact]
     public async Task UpdateStatusAsync_TransitionsStatus_SetsRespondedAt_AndRecordsHistory()
     {
         var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();

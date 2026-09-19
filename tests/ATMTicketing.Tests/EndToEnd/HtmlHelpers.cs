@@ -44,6 +44,23 @@ internal static partial class HtmlHelpers
     /// so tests can assert on it consistently either way.</summary>
     public static string PathOf(Uri location) => location.IsAbsoluteUri ? location.PathAndQuery : location.OriginalString;
 
+    /// <summary>Mirrors what site.js does for every AJAX POST in the real app: attach the
+    /// antiforgery token from the page's meta tag as the X-CSRF-TOKEN header, since these
+    /// calls build their own request body rather than serializing a Razor &lt;form&gt;'s
+    /// hidden field. <paramref name="pageHtmlWithToken"/> is any already-fetched page's HTML
+    /// from the same authenticated session (every page under _Layout carries the meta tag).</summary>
+    public static async Task<HttpResponseMessage> PostWithCsrfAsync(
+        HttpClient client, string url, string pageHtmlWithToken, Dictionary<string, string> formData)
+    {
+        var token = ExtractMetaAntiForgeryToken(pageHtmlWithToken);
+        using var request = new HttpRequestMessage(HttpMethod.Post, url)
+        {
+            Content = new FormUrlEncodedContent(formData)
+        };
+        request.Headers.Add("X-CSRF-TOKEN", token);
+        return await client.SendAsync(request);
+    }
+
     [GeneratedRegex("""<input\b[^>]*__RequestVerificationToken[^>]*>""")]
     private static partial Regex AntiForgeryInputTagRegex();
 

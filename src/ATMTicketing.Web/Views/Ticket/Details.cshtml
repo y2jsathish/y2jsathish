@@ -15,7 +15,13 @@
             }
         </div>
     </div>
-    <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to list</a>
+    <div class="d-flex gap-2">
+        @if ((User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.CallCenterAgent) || User.IsInRole(Roles.TeamLead)) && Model.ClosedAt is null && Model.Status != "Cancelled")
+        {
+            <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-outline-primary btn-sm"><i class="bi bi-pencil"></i> Edit</a>
+        }
+        <a asp-action="Index" class="btn btn-outline-secondary btn-sm"><i class="bi bi-arrow-left"></i> Back to list</a>
+    </div>
 </div>
 
 <div class="row g-3">
@@ -204,9 +210,15 @@ $(function () {
 
     var engineerSelect = $("#engineerSelect");
     if (engineerSelect.length) {
-        fetch("/api/dashboard/engineer-workload").then(r => r.json()).then(function (rows) {
+        fetch("/Ticket/AssignableEngineers?ticketId=@Model.Id").then(r => r.json()).then(function (rows) {
+            if (rows.length === 0) {
+                engineerSelect.append('<option value="" disabled selected>No active field engineers found</option>');
+                return;
+            }
             rows.forEach(function (r) {
-                engineerSelect.append('<option value="' + r.engineerId + '">' + r.engineerName + ' (' + r.openTickets + ' open)</option>');
+                var label = r.fullName + (r.regionName ? ' — ' + r.regionName : '') +
+                    (r.isSameRegionAsTicket ? ' (same region)' : '') + ' · ' + r.openTicketCount + ' open';
+                engineerSelect.append('<option value="' + r.id + '">' + label + '</option>');
             });
         });
     }

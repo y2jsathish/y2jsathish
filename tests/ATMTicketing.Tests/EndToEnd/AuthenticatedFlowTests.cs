@@ -132,6 +132,84 @@ public class AuthenticatedFlowTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
+    public async Task StatusChange_ManualReassign_AndEdit_AllWorkOverRealHttp()
+    {
+        // Regression coverage for three separately-reported issues: status updates and
+        // reassignment both depend on the X-CSRF-TOKEN header fix (see CustomWebApplicationFactory
+        // notes / site.js), and Edit didn't exist as a feature at all before this test was added.
+        using var client = await LoginAsAsync(_factory, "admin@atmticketing.local", "Admin@12345");
+
+        var createTicketForm = await client.GetAsync("/Ticket/Create");
+        var createToken = HtmlHelpers.ExtractAntiForgeryToken(await createTicketForm.Content.ReadAsStringAsync());
+        var createResponse = await client.PostAsync("/Ticket/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AtmId"] = "1", // ATM-DEL-001, seeded by DbInitializer
+            ["IncidentType"] = "Printer Failure",
+            ["CategoryId"] = "1",
+            ["Priority"] = "3", // Medium
+            ["Description"] = "Receipt printer out of paper",
+            ["ContactPerson"] = "QA Bot",
+            ["ContactNumber"] = "9999999999",
+            ["__RequestVerificationToken"] = createToken
+        }));
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var ticketId = HtmlHelpers.PathOf(createResponse.Headers.Location!).Split('/').Last();
+
+        // --- Status change ---
+        var detailsHtml = await (await client.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        var statusResponse = await HtmlHelpers.PostWithCsrfAsync(client, "/Ticket/UpdateStatus", detailsHtml, new Dictionary<string, string>
+        {
+            ["TicketId"] = ticketId,
+            ["NewStatusId"] = "3", // In Progress
+            ["Notes"] = "Started work"
+        });
+        var statusResult = await statusResponse.Content.ReadFromJsonAsync<JsonElement>();
+        statusResult.GetProperty("succeeded").GetBoolean().Should().BeTrue(statusResult.ToString());
+
+        var afterStatusHtml = await (await client.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        afterStatusHtml.Should().Contain("In Progress");
+
+        // --- Manual reassign: the fixed endpoint must list the seeded engineer even though
+        // they have no prior ticket assignments in this fresh database. ---
+        var engineersJson = await client.GetFromJsonAsync<JsonElement>($"/Ticket/AssignableEngineers?ticketId={ticketId}");
+        engineersJson.GetArrayLength().Should().BeGreaterThan(0, "at least the seeded field engineer should be assignable");
+        var engineerId = engineersJson[0].GetProperty("id").GetString();
+
+        var assignResponse = await HtmlHelpers.PostWithCsrfAsync(client, "/Ticket/Assign", afterStatusHtml, new Dictionary<string, string>
+        {
+            ["TicketId"] = ticketId,
+            ["EngineerId"] = engineerId!
+        });
+        var assignResult = await assignResponse.Content.ReadFromJsonAsync<JsonElement>();
+        assignResult.GetProperty("succeeded").GetBoolean().Should().BeTrue(assignResult.ToString());
+
+        var afterAssignHtml = await (await client.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        afterAssignHtml.Should().Contain("Amit Verma"); // the seeded engineer's full name
+
+        // --- Edit: change priority and confirm it took effect + the SLA note is on the timeline. ---
+        var editForm = await client.GetAsync($"/Ticket/Edit/{ticketId}");
+        editForm.StatusCode.Should().Be(HttpStatusCode.OK);
+        var editToken = HtmlHelpers.ExtractAntiForgeryToken(await editForm.Content.ReadAsStringAsync());
+
+        var editResponse = await client.PostAsync("/Ticket/Edit", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["Id"] = ticketId,
+            ["IncidentType"] = "Printer Failure",
+            ["CategoryId"] = "1",
+            ["Priority"] = "1", // Critical
+            ["Description"] = "Receipt printer out of paper — escalated to full failure",
+            ["ContactPerson"] = "QA Bot",
+            ["ContactNumber"] = "9999999999",
+            ["__RequestVerificationToken"] = editToken
+        }));
+        editResponse.StatusCode.Should().Be(HttpStatusCode.Redirect);
+
+        var afterEditHtml = await (await client.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        afterEditHtml.Should().Contain("escalated to full failure");
+        afterEditHtml.Should().Contain("Critical");
+    }
+
+    [Fact]
     public async Task JwtAuth_TokenIssuedOnLogin_WorksAgainstTheRestApi()
     {
         using var client = _factory.CreateFlowClient();

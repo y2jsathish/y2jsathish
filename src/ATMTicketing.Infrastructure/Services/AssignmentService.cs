@@ -1,3 +1,4 @@
+using ATMTicketing.Application.DTOs;
 using ATMTicketing.Application.Interfaces.Repositories;
 using ATMTicketing.Application.Interfaces.Services;
 using ATMTicketing.Domain.Entities;
@@ -14,6 +15,14 @@ namespace ATMTicketing.Infrastructure.Services;
 /// </summary>
 public class AssignmentService : IAssignmentService
 {
+    private static readonly int[] OpenStatusIds =
+    {
+        (int)TicketStatusCode.Assigned,
+        (int)TicketStatusCode.InProgress,
+        (int)TicketStatusCode.PendingParts,
+        (int)TicketStatusCode.PendingCustomer
+    };
+
     private readonly IUnitOfWork _uow;
     private readonly UserManager<ApplicationUser> _userManager;
 
@@ -42,16 +51,8 @@ public class AssignmentService : IAssignmentService
             return null;
         }
 
-        var openStatuses = new[]
-        {
-            (int)TicketStatusCode.Assigned,
-            (int)TicketStatusCode.InProgress,
-            (int)TicketStatusCode.PendingParts,
-            (int)TicketStatusCode.PendingCustomer
-        };
-
         var workloads = await _uow.Tickets.Query()
-            .Where(t => t.AssignedToId != null && candidateIds.Contains(t.AssignedToId!) && openStatuses.Contains(t.StatusId))
+            .Where(t => t.AssignedToId != null && candidateIds.Contains(t.AssignedToId!) && OpenStatusIds.Contains(t.StatusId))
             .GroupBy(t => t.AssignedToId!)
             .Select(g => new { EngineerId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(g => g.EngineerId, g => g.Count, ct);
@@ -93,5 +94,40 @@ public class AssignmentService : IAssignmentService
         }, ct);
 
         return true;
+    }
+
+    public async Task<IReadOnlyList<EngineerOptionDto>> GetAssignableEngineersAsync(int? ticketRegionId, CancellationToken ct = default)
+    {
+        var engineers = (await _userManager.GetUsersInRoleAsync(Roles.FieldEngineer))
+            .Where(u => u.IsActive)
+            .ToList();
+
+        if (engineers.Count == 0)
+        {
+            return Array.Empty<EngineerOptionDto>();
+        }
+
+        var engineerIds = engineers.Select(e => e.Id).ToList();
+        var workloads = await _uow.Tickets.Query()
+            .Where(t => t.AssignedToId != null && engineerIds.Contains(t.AssignedToId!) && OpenStatusIds.Contains(t.StatusId))
+            .GroupBy(t => t.AssignedToId!)
+            .Select(g => new { EngineerId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(g => g.EngineerId, g => g.Count, ct);
+
+        var regionNames = (await _uow.Regions.GetAllAsync(ct)).ToDictionary(r => r.Id, r => r.RegionName);
+
+        return engineers
+            .Select(e => new EngineerOptionDto
+            {
+                Id = e.Id,
+                FullName = e.FullName,
+                RegionName = e.RegionId.HasValue ? regionNames.GetValueOrDefault(e.RegionId.Value) : null,
+                IsSameRegionAsTicket = ticketRegionId.HasValue && e.RegionId == ticketRegionId,
+                OpenTicketCount = workloads.GetValueOrDefault(e.Id, 0)
+            })
+            .OrderByDescending(e => e.IsSameRegionAsTicket)
+            .ThenBy(e => e.OpenTicketCount)
+            .ThenBy(e => e.FullName)
+            .ToList();
     }
 }

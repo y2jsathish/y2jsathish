@@ -5,6 +5,7 @@ using ATMTicketing.Domain.Entities;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
+using Microsoft.EntityFrameworkCore;
 
 namespace ATMTicketing.Web.Controllers;
 
@@ -15,12 +16,14 @@ public class TicketController : Controller
     private const long MaxAttachmentBytes = 10 * 1024 * 1024; // 10 MB
 
     private readonly ITicketService _ticketService;
+    private readonly IAssignmentService _assignmentService;
     private readonly IUnitOfWork _uow;
     private readonly IWebHostEnvironment _environment;
 
-    public TicketController(ITicketService ticketService, IUnitOfWork uow, IWebHostEnvironment environment)
+    public TicketController(ITicketService ticketService, IAssignmentService assignmentService, IUnitOfWork uow, IWebHostEnvironment environment)
     {
         _ticketService = ticketService;
+        _assignmentService = assignmentService;
         _uow = uow;
         _environment = environment;
     }
@@ -65,6 +68,43 @@ public class TicketController : Controller
         return RedirectToAction(nameof(Details), new { id = result.Data!.Id });
     }
 
+    [Authorize(Policy = "CanManageTickets")]
+    [HttpGet]
+    public async Task<IActionResult> Edit(int id, CancellationToken ct)
+    {
+        var dto = await _ticketService.GetForEditAsync(id, ct);
+        if (dto is null)
+        {
+            return NotFound();
+        }
+
+        await PopulateDropdownsAsync();
+        return View(dto);
+    }
+
+    [Authorize(Policy = "CanManageTickets")]
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Edit(TicketEditDto dto, CancellationToken ct)
+    {
+        if (!ModelState.IsValid)
+        {
+            await PopulateDropdownsAsync();
+            return View(dto);
+        }
+
+        var result = await _ticketService.UpdateAsync(dto, ct);
+        if (!result.Succeeded)
+        {
+            ModelState.AddModelError(string.Empty, string.Join(" ", result.Errors));
+            await PopulateDropdownsAsync();
+            return View(dto);
+        }
+
+        TempData["Success"] = result.Message;
+        return RedirectToAction(nameof(Details), new { id = dto.Id });
+    }
+
     [HttpGet]
     public async Task<IActionResult> Details(int id, CancellationToken ct)
     {
@@ -94,6 +134,21 @@ public class TicketController : Controller
     {
         var result = await _ticketService.AssignAsync(dto, ct);
         return Json(result);
+    }
+
+    /// <summary>Populates the manual Assign/Reassign dropdown with every active Field
+    /// Engineer (not just ones who already have a ticket), same-region ones listed first.</summary>
+    [Authorize(Policy = "CanAssignTickets")]
+    [HttpGet]
+    public async Task<IActionResult> AssignableEngineers(int ticketId, CancellationToken ct)
+    {
+        var regionId = await _uow.Tickets.Query()
+            .Where(t => t.Id == ticketId)
+            .Select(t => (int?)t.RegionId)
+            .FirstOrDefaultAsync(ct);
+
+        var engineers = await _assignmentService.GetAssignableEngineersAsync(regionId, ct);
+        return Ok(engineers);
     }
 
     [Authorize(Policy = "CanAssignTickets")]

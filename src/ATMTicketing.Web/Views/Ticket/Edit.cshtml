@@ -1,0 +1,66 @@
+@model TicketEditDto
+@{
+    ViewData["Title"] = "Edit Ticket";
+}
+<div class="row justify-content-center">
+    <div class="col-lg-8">
+        <div class="card">
+            <div class="card-header fw-semibold"><i class="bi bi-pencil"></i> Edit Ticket Details</div>
+            <div class="card-body">
+                <p class="text-muted small">
+                    The ATM this ticket is logged against can't be changed here — create a new ticket if it was
+                    logged against the wrong ATM. Changing priority recalculates the SLA due dates from the
+                    original report time.
+                </p>
+                <div asp-validation-summary="ModelOnly" class="text-danger small"></div>
+                <form asp-action="Edit" method="post">
+                    <input type="hidden" asp-for="Id" />
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label asp-for="IncidentType" class="form-label">Incident Type</label>
+                            <input asp-for="IncidentType" class="form-control" />
+                            <span asp-validation-for="IncidentType" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="CategoryId" class="form-label">Category</label>
+                            <select asp-for="CategoryId" class="form-select" asp-items="ViewBag.Categories"><option value="">-- Select --</option></select>
+                            <span asp-validation-for="CategoryId" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="SubCategory" class="form-label">Sub-Category (optional)</label>
+                            <input asp-for="SubCategory" class="form-control" />
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="Priority" class="form-label">Priority</label>
+                            <select asp-for="Priority" class="form-select" asp-items="Html.GetEnumSelectList<ATMTicketing.Domain.Enums.PriorityLevel>()"></select>
+                            <span asp-validation-for="Priority" class="text-danger small"></span>
+                        </div>
+                        <div class="col-12">
+                            <label asp-for="Description" class="form-label">Description</label>
+                            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+                            <span asp-validation-for="Description" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactPerson" class="form-label">Contact Person</label>
+                            <input asp-for="ContactPerson" class="form-control" />
+                            <span asp-validation-for="ContactPerson" class="text-danger small"></span>
+                        </div>
+                        <div class="col-md-6">
+                            <label asp-for="ContactNumber" class="form-label">Contact Number</label>
+                            <input asp-for="ContactNumber" class="form-control" />
+                            <span asp-validation-for="ContactNumber" class="text-danger small"></span>
+                        </div>
+                    </div>
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary"><i class="bi bi-save"></i> Save Changes</button>
+                        <a asp-action="Details" asp-route-id="@Model.Id" class="btn btn-outline-secondary">Cancel</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+<partial name="_ValidationScriptsPartial" />
+}

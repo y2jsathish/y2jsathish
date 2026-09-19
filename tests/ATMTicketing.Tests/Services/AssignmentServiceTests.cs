@@ -149,5 +149,55 @@ public class AssignmentServiceTests : IDisposable
         ticket.StatusId.Should().Be((int)TicketStatusCode.New);
     }
 
+    [Fact]
+    public async Task GetAssignableEngineersAsync_IncludesEngineersWithZeroTickets()
+    {
+        // Regression test for the bug where the manual reassign dropdown only listed
+        // engineers who already had at least one ticket assigned, so a brand-new engineer
+        // (or a fresh system with no assignments yet) never appeared as an option.
+        var (region, _, _, _) = await _fixture.SeedBaselineAsync();
+        var freshEngineer = await _fixture.CreateUserAsync("fresh@test.local", Roles.FieldEngineer, region.Id, "Fresh Engineer");
+
+        var sut = CreateSut();
+        var options = await sut.GetAssignableEngineersAsync(region.Id);
+
+        options.Should().ContainSingle(e => e.Id == freshEngineer.Id && e.OpenTicketCount == 0);
+    }
+
+    [Fact]
+    public async Task GetAssignableEngineersAsync_ListsSameRegionEngineersFirst()
+    {
+        var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
+        var otherRegion = new Region { RegionName = "South", Zone = "Zone B" };
+        _fixture.Db.Regions.Add(otherRegion);
+        await _fixture.Db.SaveChangesAsync();
+
+        var sameRegionEngineer = await _fixture.CreateUserAsync("same@test.local", Roles.FieldEngineer, region.Id, "Same Region Engineer");
+        var otherRegionEngineer = await _fixture.CreateUserAsync("other@test.local", Roles.FieldEngineer, otherRegion.Id, "Other Region Engineer");
+
+        var sut = CreateSut();
+        var options = await sut.GetAssignableEngineersAsync(region.Id);
+
+        options.Should().HaveCount(2);
+        options[0].Id.Should().Be(sameRegionEngineer.Id);
+        options[0].IsSameRegionAsTicket.Should().BeTrue();
+        options[1].Id.Should().Be(otherRegionEngineer.Id);
+        options[1].IsSameRegionAsTicket.Should().BeFalse();
+    }
+
+    [Fact]
+    public async Task GetAssignableEngineersAsync_ExcludesInactiveEngineers()
+    {
+        var (region, _, _, _) = await _fixture.SeedBaselineAsync();
+        var inactive = await _fixture.CreateUserAsync("inactive@test.local", Roles.FieldEngineer, region.Id, "Inactive Engineer");
+        inactive.IsActive = false;
+        await _fixture.UserManager.UpdateAsync(inactive);
+
+        var sut = CreateSut();
+        var options = await sut.GetAssignableEngineersAsync(region.Id);
+
+        options.Should().BeEmpty();
+    }
+
     public void Dispose() => _fixture.Dispose();
 }

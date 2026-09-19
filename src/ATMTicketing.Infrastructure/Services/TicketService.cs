@@ -133,6 +133,7 @@ public class TicketService : ITicketService
             Description = ticket.Description,
             ContactPerson = ticket.ContactPerson,
             ContactNumber = ticket.ContactNumber,
+            RegionId = ticket.RegionId,
             CreatedByName = ticket.CreatedBy.FullName,
             CreatedDate = ticket.CreatedDate,
             AssignedToId = ticket.AssignedToId,
@@ -172,6 +173,104 @@ public class TicketService : ITicketService
                     Url = $"/uploads/tickets/{ticket.Id}/{a.FileName}"
                 }).ToList()
         };
+    }
+
+    public async Task<TicketEditDto?> GetForEditAsync(int ticketId, CancellationToken ct = default)
+    {
+        var ticket = await _uow.Tickets.GetByIdAsync(ticketId, ct);
+        if (ticket is null)
+        {
+            return null;
+        }
+
+        return new TicketEditDto
+        {
+            Id = ticket.Id,
+            IncidentType = ticket.IncidentType,
+            CategoryId = ticket.CategoryId,
+            SubCategory = ticket.SubCategory,
+            Priority = ticket.Priority,
+            Description = ticket.Description,
+            ContactPerson = ticket.ContactPerson,
+            ContactNumber = ticket.ContactNumber
+        };
+    }
+
+    public async Task<ServiceResult> UpdateAsync(TicketEditDto dto, CancellationToken ct = default)
+    {
+        if (_currentUser.UserId is null)
+        {
+            return ServiceResult.Failure("No authenticated user.");
+        }
+
+        var ticket = await _uow.Tickets.Query(asNoTracking: false).FirstOrDefaultAsync(t => t.Id == dto.Id, ct);
+        if (ticket is null)
+        {
+            return ServiceResult.Failure("Ticket not found.");
+        }
+
+        if (ticket.StatusId is (int)TicketStatusCode.Closed or (int)TicketStatusCode.Cancelled)
+        {
+            return ServiceResult.Failure("Closed or cancelled tickets can no longer be edited.");
+        }
+
+        var category = await _uow.Categories.GetByIdAsync(dto.CategoryId, ct);
+        if (category is null)
+        {
+            return ServiceResult.Failure("Selected category was not found.");
+        }
+
+        var changes = new List<string>();
+        if (ticket.IncidentType != dto.IncidentType) changes.Add($"Incident type: {ticket.IncidentType} -> {dto.IncidentType}");
+        if (ticket.CategoryId != dto.CategoryId) changes.Add($"Category: {ticket.CategoryId} -> {dto.CategoryId}");
+        if (ticket.SubCategory != dto.SubCategory) changes.Add("Sub-category updated");
+        if (ticket.Description != dto.Description) changes.Add("Description updated");
+        if (ticket.ContactPerson != dto.ContactPerson || ticket.ContactNumber != dto.ContactNumber) changes.Add("Contact details updated");
+
+        var priorityChanged = ticket.Priority != dto.Priority;
+        if (priorityChanged)
+        {
+            changes.Add($"Priority: {ticket.Priority} -> {dto.Priority}");
+        }
+
+        ticket.IncidentType = dto.IncidentType;
+        ticket.CategoryId = dto.CategoryId;
+        ticket.SubCategory = dto.SubCategory;
+        ticket.Priority = dto.Priority;
+        ticket.Description = dto.Description;
+        ticket.ContactPerson = dto.ContactPerson;
+        ticket.ContactNumber = dto.ContactNumber;
+        ticket.UpdatedDate = DateTime.UtcNow;
+
+        if (priorityChanged)
+        {
+            // Recompute both due dates from the ORIGINAL report time so correcting a
+            // misclassified ticket (e.g. Medium -> Critical) re-bases its SLA clock fairly,
+            // rather than measuring the new target from the moment of the edit.
+            var (responseDue, resolutionDue) = _slaService.CalculateDueDates(dto.Priority, ticket.CreatedDate);
+            ticket.ResponseDueAt = responseDue;
+            ticket.ResolutionDueAt = resolutionDue;
+
+            var now = DateTime.UtcNow;
+            ticket.IsResponseBreached = ticket.RespondedAt is null && now >= responseDue;
+            ticket.IsResolutionBreached = ticket.ResolvedAt is null && now >= resolutionDue;
+        }
+
+        _uow.Tickets.Update(ticket);
+
+        if (changes.Count > 0)
+        {
+            await _uow.TicketHistories.AddAsync(new TicketHistory
+            {
+                TicketId = ticket.Id,
+                ActionType = TicketHistoryAction.Commented,
+                Notes = "Ticket details edited: " + string.Join("; ", changes),
+                ActionById = _currentUser.UserId
+            }, ct);
+        }
+
+        await _uow.SaveChangesAsync(ct);
+        return ServiceResult.Success("Ticket updated successfully.");
     }
 
     public async Task<DataTableResponse<TicketListItemDto>> GetPagedAsync(DataTableRequest request, TicketFilterDto filter, CancellationToken ct = default)
