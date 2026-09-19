@@ -67,6 +67,12 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("CanViewReports", p => p.RequireRole(Roles.Administrator, Roles.OperationsManager, Roles.TeamLead));
 });
 
+// Plain fetch/$.ajax calls (every AJAX-posted action in this app — Delete buttons, status
+// updates, etc.) can't render a Razor <form> hidden field, so they send the antiforgery
+// token via this header instead (see wwwroot/js/site.js's global ajaxSetup). The token is
+// still accepted from a form field too when one exists (Create/Edit modals with asp-action).
+builder.Services.AddAntiforgery(options => options.HeaderName = "X-CSRF-TOKEN");
+
 builder.Services.AddSession(options =>
 {
     options.IdleTimeout = TimeSpan.FromMinutes(30);

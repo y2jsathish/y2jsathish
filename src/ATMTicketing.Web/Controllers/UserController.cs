@@ -2,6 +2,7 @@ using ATMTicketing.Application.Common;
 using ATMTicketing.Application.DTOs;
 using ATMTicketing.Application.Interfaces.Repositories;
 using ATMTicketing.Domain.Entities;
+using ATMTicketing.Web.Extensions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
@@ -157,6 +158,39 @@ public class UserController : Controller
         user.IsActive = !user.IsActive;
         await _userManager.UpdateAsync(user);
         return Json(ServiceResult.Success(user.IsActive ? "User activated." : "User deactivated."));
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> Delete(string id, CancellationToken ct)
+    {
+        if (id == User.GetUserId())
+        {
+            return Json(ServiceResult.Failure("You cannot delete your own account."));
+        }
+
+        var user = await _userManager.FindByIdAsync(id);
+        if (user is null)
+        {
+            return Json(ServiceResult.Failure("User not found."));
+        }
+
+        var hasTicketActivity =
+            await _uow.Tickets.Query().AnyAsync(t => t.CreatedById == id || t.AssignedToId == id, ct) ||
+            await _uow.TicketHistories.Query().AnyAsync(h => h.ActionById == id, ct) ||
+            await _uow.TicketAssignments.Query().AnyAsync(a => a.AssignedToId == id || a.AssignedById == id, ct) ||
+            await _uow.TicketAttachments.Query().AnyAsync(a => a.UploadedById == id, ct);
+
+        if (hasTicketActivity)
+        {
+            return Json(ServiceResult.Failure(
+                "Cannot delete a user with ticket history (created, assigned, or logged activity). Deactivate the account instead."));
+        }
+
+        var result = await _userManager.DeleteAsync(user);
+        return result.Succeeded
+            ? Json(ServiceResult.Success("User deleted."))
+            : Json(ServiceResult.Failure(result.Errors.Select(e => e.Description).ToArray()));
     }
 
     [HttpPost]

@@ -25,6 +25,20 @@ internal static partial class HtmlHelpers
         return valueMatch.Groups[1].Value;
     }
 
+    /// <summary>Pulls the token out of the layout's &lt;meta name="request-verification-token"&gt;
+    /// tag — the one site.js reads and attaches as the X-CSRF-TOKEN header on every AJAX POST
+    /// that doesn't have a Razor &lt;form&gt; to carry a hidden field. Tests hitting those
+    /// endpoints (Delete/ToggleActive/etc.) need to do the same to pass antiforgery validation.</summary>
+    public static string ExtractMetaAntiForgeryToken(string html)
+    {
+        var match = MetaAntiForgeryRegex().Match(html);
+        if (!match.Success)
+        {
+            throw new InvalidOperationException("Could not find the request-verification-token meta tag in the response HTML.");
+        }
+        return match.Groups[1].Value;
+    }
+
     /// <summary>ASP.NET Core's RedirectResult sometimes writes an absolute Location header
     /// and sometimes a relative one depending on the action; normalize to a path+query string
     /// so tests can assert on it consistently either way.</summary>
@@ -35,4 +49,7 @@ internal static partial class HtmlHelpers
 
     [GeneratedRegex("value=\"([^\"]*)\"")]
     private static partial Regex ValueAttributeRegex();
+
+    [GeneratedRegex("<meta\\s+name=\"request-verification-token\"\\s+content=\"([^\"]*)\"")]
+    private static partial Regex MetaAntiForgeryRegex();
 }

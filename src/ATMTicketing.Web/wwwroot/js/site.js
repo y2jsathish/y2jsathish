@@ -1,6 +1,23 @@
 (function () {
     "use strict";
 
+    // ---- CSRF/antiforgery for AJAX ----------------------------------------
+    // Every $.post/$.ajax POST in this app targets an action guarded by
+    // [ValidateAntiForgeryToken]. Those calls build their own request body
+    // (an object or FormData) rather than serializing a Razor <form>, so
+    // there's no hidden __RequestVerificationToken field to carry the token.
+    // Attaching it as a header here (read once from the layout's meta tag)
+    // covers every such call in the app in one place, matching the
+    // X-CSRF-TOKEN header name Program.cs registers with AddAntiforgery.
+    var csrfToken = document.querySelector('meta[name="request-verification-token"]');
+    if (csrfToken) {
+        $.ajaxSetup({
+            beforeSend: function (xhr) {
+                xhr.setRequestHeader("X-CSRF-TOKEN", csrfToken.content);
+            }
+        });
+    }
+
     // ---- Dark mode -----------------------------------------------------
     var root = document.documentElement;
     var toggleBtn = document.getElementById("darkModeToggle");

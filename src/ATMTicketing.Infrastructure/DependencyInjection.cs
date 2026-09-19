@@ -47,6 +47,8 @@ public static class DependencyInjection
         services.AddScoped<IDashboardService, DashboardService>();
         services.AddScoped<IReportService, ReportService>();
         services.AddScoped<IAuditService, AuditService>();
+        services.AddScoped<ICategoryService, CategoryService>();
+        services.AddScoped<IRegionService, RegionService>();
 
         services.AddHostedService<SlaMonitorService>();
 

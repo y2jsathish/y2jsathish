@@ -37,6 +37,7 @@
                             <i class="bi @(u.IsActive ? "bi-pause-circle" : "bi-play-circle")"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-warning btn-reset" data-id="@u.Id"><i class="bi bi-key"></i></button>
+                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="@u.Id"><i class="bi bi-trash"></i></button>
                     </td>
                 </tr>
             }
@@ -64,6 +65,14 @@ $(function () {
             } else {
                 atmTicketing.showResult(result);
             }
+        });
+    });
+    $(".btn-delete").on("click", function () {
+        if (!confirm("Permanently delete this user? This only succeeds if they have no ticket history.")) return;
+        var id = $(this).data("id");
+        $.post("/User/Delete", { id: id }, function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) location.reload();
         });
     });
 });

@@ -1,0 +1,89 @@
+@model IReadOnlyList<RegionListItemDto>
+@{
+    ViewData["Title"] = "Region Master";
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h5 class="mb-0">Region Master</h5>
+    <button class="btn btn-primary btn-sm" id="btnAddRegion"><i class="bi bi-plus-circle"></i> Add Region</button>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover table-sm" id="regionTable">
+            <thead><tr><th>Region</th><th>Zone</th><th>ATMs</th><th>Vendors</th><th>Users</th><th>Status</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.RegionName</td>
+                    <td>@r.Zone</td>
+                    <td>@r.AtmCount</td>
+                    <td>@r.VendorCount</td>
+                    <td>@r.UserCount</td>
+                    <td>
+                        @if (r.IsActive)
+                        {
+                            <span class="badge bg-success">Active</span>
+                        }
+                        else
+                        {
+                            <span class="badge bg-secondary">Inactive</span>
+                        }
+                    </td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-primary btn-edit" data-id="@r.Id"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="@r.Id"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        @if (!Model.Any())
+        {
+            <p class="text-muted mb-0">No regions yet.</p>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="regionModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" id="regionModalContent"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    function openModal(url) {
+        $.get(url, function (html) {
+            $("#regionModalContent").html(html);
+            $("#regionModal").modal("show");
+        });
+    }
+
+    $("#btnAddRegion").on("click", function () { openModal("/Region/Create"); });
+    $("#regionTable").on("click", ".btn-edit", function () { openModal("/Region/Edit/" + $(this).data("id")); });
+
+    $("#regionTable").on("click", ".btn-delete", function () {
+        if (!confirm("Delete this region?")) return;
+        $.post("/Region/Delete", { id: $(this).data("id") }, function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) location.reload();
+        });
+    });
+
+    $(document).on("submit", "#regionForm", function (e) {
+        e.preventDefault();
+        var form = $(this);
+        $.post(form.attr("action"), form.serialize(), function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) {
+                $("#regionModal").modal("hide");
+                location.reload();
+            }
+        });
+    });
+});
+</script>
+}
