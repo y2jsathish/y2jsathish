@@ -42,6 +42,30 @@ public class AuthenticatedFlowTests : IClassFixture<CustomWebApplicationFactory>
         return client;
     }
 
+    /// <summary>Creates a fresh user with the given role through the real admin /User/Create
+    /// form (not a DB seed), then logs in as them — so RBAC tests exercise the exact same
+    /// role-assignment path an administrator would use in production.</summary>
+    private static async Task<HttpClient> CreateAndLoginAsAsync(CustomWebApplicationFactory factory, string role, string namePrefix)
+    {
+        using var adminClient = await LoginAsAsync(factory, "admin@atmticketing.local", "Admin@12345");
+
+        var createForm = await adminClient.GetAsync("/User/Create");
+        var token = HtmlHelpers.ExtractAntiForgeryToken(await createForm.Content.ReadAsStringAsync());
+        var email = $"{namePrefix.ToLowerInvariant()}-{Guid.NewGuid():N}@test.local";
+
+        var createResponse = await adminClient.PostAsync("/User/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["FullName"] = namePrefix,
+            ["Email"] = email,
+            ["Role"] = role,
+            ["Password"] = "Passw0rd!23",
+            ["__RequestVerificationToken"] = token
+        }));
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Redirect, $"creating a {role} user should succeed");
+
+        return await LoginAsAsync(factory, email, "Passw0rd!23");
+    }
+
     [Fact]
     public async Task FullTicketWorkflow_LoginCreateAtmCreateTicketAndSeeItInTheList()
     {
@@ -207,6 +231,87 @@ public class AuthenticatedFlowTests : IClassFixture<CustomWebApplicationFactory>
         var afterEditHtml = await (await client.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
         afterEditHtml.Should().Contain("escalated to full failure");
         afterEditHtml.Should().Contain("Critical");
+    }
+
+    [Fact]
+    public async Task CallCenterAgent_CanEscalateATicketTheyCreated()
+    {
+        // Regression test: Escalate used to be nested inside the Team-Lead-only "Assign /
+        // Reassign" card and gated by the CanAssignTickets policy, so a Call Center Agent —
+        // who per spec must be able to escalate tickets — could neither see nor use it.
+        using var agentClient = await CreateAndLoginAsAsync(_factory, "CallCenterAgent", "Agent");
+
+        var createForm = await agentClient.GetAsync("/Ticket/Create");
+        createForm.StatusCode.Should().Be(HttpStatusCode.OK, "a Call Center Agent must be able to reach the ticket creation form");
+        var createToken = HtmlHelpers.ExtractAntiForgeryToken(await createForm.Content.ReadAsStringAsync());
+
+        var createResponse = await agentClient.PostAsync("/Ticket/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AtmId"] = "1",
+            ["IncidentType"] = "Network Failure",
+            ["CategoryId"] = "1",
+            ["Priority"] = "2", // High
+            ["Description"] = "Link down at branch",
+            ["ContactPerson"] = "QA Bot",
+            ["ContactNumber"] = "9999999999",
+            ["__RequestVerificationToken"] = createToken
+        }));
+        createResponse.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        var ticketId = HtmlHelpers.PathOf(createResponse.Headers.Location!).Split('/').Last();
+
+        var detailsHtml = await (await agentClient.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        detailsHtml.Should().Contain("id=\"escalateForm\"", "the Escalate form should render for a Call Center Agent");
+
+        var escalateResponse = await HtmlHelpers.PostWithCsrfAsync(agentClient, "/Ticket/Escalate", detailsHtml, new Dictionary<string, string>
+        {
+            ["ticketId"] = ticketId,
+            ["reason"] = "Customer is a VIP branch"
+        });
+        var result = await escalateResponse.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("succeeded").GetBoolean().Should().BeTrue(result.ToString());
+
+        var afterHtml = await (await agentClient.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        afterHtml.Should().Contain("Escalated");
+    }
+
+    [Fact]
+    public async Task TeamLead_CanCloseATicket()
+    {
+        // Regression test: the server-side CanWorkTickets policy already allowed Team Lead to
+        // close tickets, but the Close form only rendered for FieldEngineer/Administrator, so
+        // a Team Lead had permission with no UI path to use it.
+        using var teamLeadClient = await CreateAndLoginAsAsync(_factory, "TeamLead", "Lead");
+
+        using var adminClient = await LoginAsAsync(_factory, "admin@atmticketing.local", "Admin@12345");
+        var createForm = await adminClient.GetAsync("/Ticket/Create");
+        var createToken = HtmlHelpers.ExtractAntiForgeryToken(await createForm.Content.ReadAsStringAsync());
+        var createResponse = await adminClient.PostAsync("/Ticket/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AtmId"] = "1",
+            ["IncidentType"] = "Cash Out",
+            ["CategoryId"] = "1",
+            ["Priority"] = "2",
+            ["Description"] = "ATM out of cash",
+            ["ContactPerson"] = "QA Bot",
+            ["ContactNumber"] = "9999999999",
+            ["__RequestVerificationToken"] = createToken
+        }));
+        var ticketId = HtmlHelpers.PathOf(createResponse.Headers.Location!).Split('/').Last();
+
+        var detailsHtml = await (await teamLeadClient.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        detailsHtml.Should().Contain("id=\"closeForm\"", "the Close form should render for a Team Lead, matching the CanWorkTickets server policy");
+
+        var closeResponse = await HtmlHelpers.PostWithCsrfAsync(teamLeadClient, "/Ticket/Close", detailsHtml, new Dictionary<string, string>
+        {
+            ["TicketId"] = ticketId,
+            ["ResolutionNotes"] = "Cash replenished by vendor",
+            ["ClosureRemarks"] = "Confirmed working with branch"
+        });
+        var result = await closeResponse.Content.ReadFromJsonAsync<JsonElement>();
+        result.GetProperty("succeeded").GetBoolean().Should().BeTrue(result.ToString());
+
+        var afterHtml = await (await teamLeadClient.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        afterHtml.Should().Contain("Closed");
     }
 
     [Fact]

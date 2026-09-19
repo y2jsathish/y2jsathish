@@ -63,6 +63,8 @@ builder.Services.AddAuthorization(options =>
     options.AddPolicy("AdministratorOnly", p => p.RequireRole(Roles.Administrator));
     options.AddPolicy("CanManageTickets", p => p.RequireRole(Roles.Administrator, Roles.CallCenterAgent, Roles.TeamLead));
     options.AddPolicy("CanAssignTickets", p => p.RequireRole(Roles.Administrator, Roles.TeamLead));
+    // Call Center Agent escalates tickets they raised; Team Lead owns "escalation management" per spec.
+    options.AddPolicy("CanEscalateTickets", p => p.RequireRole(Roles.Administrator, Roles.CallCenterAgent, Roles.TeamLead));
     options.AddPolicy("CanWorkTickets", p => p.RequireRole(Roles.Administrator, Roles.FieldEngineer, Roles.TeamLead));
     options.AddPolicy("CanViewReports", p => p.RequireRole(Roles.Administrator, Roles.OperationsManager, Roles.TeamLead));
 });

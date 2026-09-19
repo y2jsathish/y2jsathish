@@ -151,7 +151,7 @@ public class TicketController : Controller
         return Ok(engineers);
     }
 
-    [Authorize(Policy = "CanAssignTickets")]
+    [Authorize(Policy = "CanEscalateTickets")]
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Escalate(int ticketId, string reason, CancellationToken ct)

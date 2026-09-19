@@ -151,7 +151,16 @@
                         <select name="EngineerId" class="form-select form-select-sm mb-2" id="engineerSelect"></select>
                         <button type="submit" class="btn btn-sm btn-outline-primary w-100">Assign</button>
                     </form>
-                    <hr />
+                </div>
+            </div>
+        }
+
+        @if ((User.IsInRole(Roles.Administrator) || User.IsInRole(Roles.CallCenterAgent) || User.IsInRole(Roles.TeamLead))
+             && Model.ClosedAt is null && Model.Status != "Cancelled")
+        {
+            <div class="card mb-3">
+                <div class="card-header fw-semibold">Escalate</div>
+                <div class="card-body">
                     <form id="escalateForm">
                         <input type="hidden" name="ticketId" value="@Model.Id" />
                         <input type="text" name="reason" class="form-control form-control-sm mb-2" placeholder="Escalation reason" />
@@ -161,7 +170,7 @@
             </div>
         }
 
-        @if ((User.IsInRole(Roles.FieldEngineer) || User.IsInRole(Roles.Administrator)) && Model.ClosedAt is null)
+        @if ((User.IsInRole(Roles.FieldEngineer) || User.IsInRole(Roles.TeamLead) || User.IsInRole(Roles.Administrator)) && Model.ClosedAt is null)
         {
             <div class="card">
                 <div class="card-header fw-semibold">Close Ticket</div>
