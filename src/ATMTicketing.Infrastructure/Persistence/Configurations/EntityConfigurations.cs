@@ -240,6 +240,27 @@ public class NotificationConfiguration : IEntityTypeConfiguration<Notification>
     }
 }
 
+public class DutyRosterConfiguration : IEntityTypeConfiguration<DutyRoster>
+{
+    public void Configure(EntityTypeBuilder<DutyRoster> builder)
+    {
+        builder.ToTable("DutyRoster");
+        builder.Property(d => d.Notes).HasMaxLength(300);
+        builder.HasIndex(d => new { d.EngineerId, d.DutyDate, d.Shift }).IsUnique();
+        builder.HasIndex(d => new { d.RegionId, d.DutyDate });
+
+        builder.HasOne(d => d.Region)
+            .WithMany()
+            .HasForeignKey(d => d.RegionId)
+            .OnDelete(DeleteBehavior.Restrict);
+
+        builder.HasOne(d => d.Engineer)
+            .WithMany()
+            .HasForeignKey(d => d.EngineerId)
+            .OnDelete(DeleteBehavior.Restrict);
+    }
+}
+
 public class AuditLogConfiguration : IEntityTypeConfiguration<AuditLog>
 {
     public void Configure(EntityTypeBuilder<AuditLog> builder)

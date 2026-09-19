@@ -62,6 +62,72 @@ public class AssignmentServiceTests : IDisposable
     }
 
     [Fact]
+    public async Task FindBestEngineerAsync_PrefersOnDutyEngineer_EvenOverAnIdleNonRosteredOne()
+    {
+        // The duty roster should be authoritative: once someone is rostered on for the
+        // ticket's region today, they get the ticket even if a different, currently-idle
+        // engineer in the same region would otherwise win purely on workload.
+        var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
+        var agent = await _fixture.CreateUserAsync("agent@test.local", Roles.CallCenterAgent, region.Id);
+        var onDutyEngineer = await _fixture.CreateUserAsync("onduty@test.local", Roles.FieldEngineer, region.Id, "On Duty Engineer");
+        var idleOffDutyEngineer = await _fixture.CreateUserAsync("idle@test.local", Roles.FieldEngineer, region.Id, "Idle Off-Duty Engineer");
+
+        // Give the on-duty engineer an existing open ticket so they'd lose on workload alone.
+        var existing = await CreateOpenTicketAsync(region, vendor, atm, category, agent.Id, "TCK-ONDUTY-0");
+        existing.AssignedToId = onDutyEngineer.Id;
+        existing.StatusId = (int)TicketStatusCode.Assigned;
+        await _fixture.Db.SaveChangesAsync();
+
+        _fixture.Db.DutyRosters.Add(new DutyRoster
+        {
+            DutyDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Shift = DutyShift.General,
+            RegionId = region.Id,
+            EngineerId = onDutyEngineer.Id
+        });
+        await _fixture.Db.SaveChangesAsync();
+
+        var newTicket = await CreateOpenTicketAsync(region, vendor, atm, category, agent.Id, "TCK-ONDUTY-1");
+
+        var sut = CreateSut();
+        var best = await sut.FindBestEngineerAsync(newTicket);
+
+        best.Should().NotBeNull();
+        best!.Id.Should().Be(onDutyEngineer.Id);
+        idleOffDutyEngineer.Id.Should().NotBe(best.Id);
+    }
+
+    [Fact]
+    public async Task FindBestEngineerAsync_FallsBackToRegionWorkloadRanking_WhenNobodyIsRosteredOnDuty()
+    {
+        var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
+        var agent = await _fixture.CreateUserAsync("agent@test.local", Roles.CallCenterAgent, region.Id);
+        var idleEngineer = await _fixture.CreateUserAsync("idle@test.local", Roles.FieldEngineer, region.Id, "Idle Engineer");
+
+        // A duty roster entry for a *different* region must not affect this region's pick.
+        var otherRegion = new Region { RegionName = "South", Zone = "Zone B" };
+        _fixture.Db.Regions.Add(otherRegion);
+        await _fixture.Db.SaveChangesAsync();
+        var elsewhereEngineer = await _fixture.CreateUserAsync("elsewhere@test.local", Roles.FieldEngineer, otherRegion.Id, "Elsewhere Engineer");
+        _fixture.Db.DutyRosters.Add(new DutyRoster
+        {
+            DutyDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Shift = DutyShift.General,
+            RegionId = otherRegion.Id,
+            EngineerId = elsewhereEngineer.Id
+        });
+        await _fixture.Db.SaveChangesAsync();
+
+        var ticket = await CreateOpenTicketAsync(region, vendor, atm, category, agent.Id, "TCK-NOROSTER-1");
+
+        var sut = CreateSut();
+        var best = await sut.FindBestEngineerAsync(ticket);
+
+        best.Should().NotBeNull();
+        best!.Id.Should().Be(idleEngineer.Id);
+    }
+
+    [Fact]
     public async Task FindBestEngineerAsync_FallsBackToAnyActiveEngineer_WhenNoneCoverTheRegion()
     {
         var (region, vendor, atm, category) = await _fixture.SeedBaselineAsync();
@@ -197,6 +263,31 @@ public class AssignmentServiceTests : IDisposable
         var options = await sut.GetAssignableEngineersAsync(region.Id);
 
         options.Should().BeEmpty();
+    }
+
+    [Fact]
+    public async Task GetAssignableEngineersAsync_FlagsOnDutyEngineer_AndListsThemFirst()
+    {
+        var (region, _, _, _) = await _fixture.SeedBaselineAsync();
+        var onDuty = await _fixture.CreateUserAsync("onduty@test.local", Roles.FieldEngineer, region.Id, "On Duty Engineer");
+        var offDuty = await _fixture.CreateUserAsync("offduty@test.local", Roles.FieldEngineer, region.Id, "Off Duty Engineer");
+
+        _fixture.Db.DutyRosters.Add(new DutyRoster
+        {
+            DutyDate = DateOnly.FromDateTime(DateTime.UtcNow),
+            Shift = DutyShift.General,
+            RegionId = region.Id,
+            EngineerId = onDuty.Id
+        });
+        await _fixture.Db.SaveChangesAsync();
+
+        var sut = CreateSut();
+        var options = await sut.GetAssignableEngineersAsync(region.Id);
+
+        options.Should().HaveCount(2);
+        options[0].Id.Should().Be(onDuty.Id);
+        options[0].IsOnDuty.Should().BeTrue();
+        options.Single(o => o.Id == offDuty.Id).IsOnDuty.Should().BeFalse();
     }
 
     public void Dispose() => _fixture.Dispose();

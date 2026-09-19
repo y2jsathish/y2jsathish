@@ -19,6 +19,7 @@ public class UnitOfWork : IUnitOfWork
     private IGenericRepository<StatusMaster>? _statuses;
     private IGenericRepository<Notification>? _notifications;
     private IGenericRepository<AuditLog>? _auditLogs;
+    private IGenericRepository<DutyRoster>? _dutyRosters;
 
     public UnitOfWork(ApplicationDbContext context)
     {
@@ -37,6 +38,7 @@ public class UnitOfWork : IUnitOfWork
     public IGenericRepository<StatusMaster> Statuses => _statuses ??= new GenericRepository<StatusMaster>(_context);
     public IGenericRepository<Notification> Notifications => _notifications ??= new GenericRepository<Notification>(_context);
     public IGenericRepository<AuditLog> AuditLogs => _auditLogs ??= new GenericRepository<AuditLog>(_context);
+    public IGenericRepository<DutyRoster> DutyRosters => _dutyRosters ??= new GenericRepository<DutyRoster>(_context);
 
     public Task<int> SaveChangesAsync(CancellationToken ct = default) => _context.SaveChangesAsync(ct);
 

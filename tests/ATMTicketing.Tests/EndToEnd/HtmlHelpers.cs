@@ -39,6 +39,27 @@ internal static partial class HtmlHelpers
         return match.Groups[1].Value;
     }
 
+    /// <summary>Finds the value="..." of the &lt;option&gt; inside a given &lt;select id="..."&gt;
+    /// whose visible text matches, e.g. picking "North" out of a rendered RegionId dropdown
+    /// without the test needing to know the seeded row's database id ahead of time.</summary>
+    public static string ExtractSelectOptionValueByText(string html, string selectId, string optionText)
+    {
+        var selectMatch = Regex.Match(html, $"""<select\b[^>]*\bid="{Regex.Escape(selectId)}"[^>]*>(.*?)</select>""", RegexOptions.Singleline);
+        if (!selectMatch.Success)
+        {
+            throw new InvalidOperationException($"Could not find a <select id=\"{selectId}\"> in the response HTML.");
+        }
+
+        var optionMatch = Regex.Match(selectMatch.Groups[1].Value,
+            $"""<option\s+value="([^"]*)"[^>]*>\s*{Regex.Escape(optionText)}\s*</option>""");
+        if (!optionMatch.Success)
+        {
+            throw new InvalidOperationException($"Could not find an <option> with text \"{optionText}\" inside select \"{selectId}\".");
+        }
+
+        return optionMatch.Groups[1].Value;
+    }
+
     /// <summary>ASP.NET Core's RedirectResult sometimes writes an absolute Location header
     /// and sometimes a relative one depending on the action; normalize to a path+query string
     /// so tests can assert on it consistently either way.</summary>

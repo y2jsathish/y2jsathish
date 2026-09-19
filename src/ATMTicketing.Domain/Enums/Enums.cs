@@ -81,3 +81,13 @@ public enum TicketHistoryAction
     Closed = 9,
     Cancelled = 10
 }
+
+/// <summary>A duty roster entry's coverage window; General covers the whole day rather than
+/// one of the three shifts (useful for small teams that don't split shifts).</summary>
+public enum DutyShift
+{
+    Morning = 1,
+    Evening = 2,
+    Night = 3,
+    General = 4
+}

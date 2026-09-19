@@ -187,6 +187,13 @@ public class UserController : Controller
                 "Cannot delete a user with ticket history (created, assigned, or logged activity). Deactivate the account instead."));
         }
 
+        var hasDutyRosterEntries = await _uow.DutyRosters.Query().AnyAsync(d => d.EngineerId == id, ct);
+        if (hasDutyRosterEntries)
+        {
+            return Json(ServiceResult.Failure(
+                "Cannot delete a user with duty roster entries. Remove their roster entries first, or deactivate the account instead."));
+        }
+
         var result = await _userManager.DeleteAsync(user);
         return result.Succeeded
             ? Json(ServiceResult.Success("User deleted."))

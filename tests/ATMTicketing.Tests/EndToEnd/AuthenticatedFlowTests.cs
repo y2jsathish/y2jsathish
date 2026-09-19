@@ -383,4 +383,44 @@ public class AuthenticatedFlowTests : IClassFixture<CustomWebApplicationFactory>
         response.StatusCode.Should().Be(HttpStatusCode.Redirect);
         HtmlHelpers.PathOf(response.Headers.Location!).Should().StartWith("/Account/AccessDenied");
     }
+
+    [Fact]
+    public async Task DutyRoster_AdminCreatesEntry_TeamLeadCanAlsoManageIt_OtherRolesLocked()
+    {
+        using var adminClient = await LoginAsAsync(_factory, "admin@atmticketing.local", "Admin@12345");
+
+        var createForm = await adminClient.GetAsync("/DutyRoster/Create");
+        createForm.StatusCode.Should().Be(HttpStatusCode.OK);
+        var createHtml = await createForm.Content.ReadAsStringAsync();
+        var token = HtmlHelpers.ExtractAntiForgeryToken(createHtml);
+        // Seeded reference data (DbInitializer): the "North" region and field engineer "Amit Verma".
+        var regionId = HtmlHelpers.ExtractSelectOptionValueByText(createHtml, "RegionId", "North");
+        var engineerId = HtmlHelpers.ExtractSelectOptionValueByText(createHtml, "EngineerId", "Amit Verma");
+        var today = DateOnly.FromDateTime(DateTime.UtcNow).ToString("yyyy-MM-dd");
+
+        var createResponse = await adminClient.PostAsync("/DutyRoster/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["DutyDate"] = today,
+            ["Shift"] = "General",
+            ["RegionId"] = regionId,
+            ["EngineerId"] = engineerId,
+            ["__RequestVerificationToken"] = token
+        }));
+        var createResult = await createResponse.Content.ReadFromJsonAsync<JsonElement>();
+        createResult.GetProperty("succeeded").GetBoolean().Should().BeTrue();
+
+        var indexHtml = await (await adminClient.GetAsync("/DutyRoster/Index")).Content.ReadAsStringAsync();
+        indexHtml.Should().Contain("Amit Verma");
+
+        // A Team Lead manages the roster too, not just Administrators.
+        using var leadClient = await CreateAndLoginAsAsync(_factory, "TeamLead", "Lead");
+        var leadIndexResponse = await leadClient.GetAsync("/DutyRoster/Index");
+        leadIndexResponse.StatusCode.Should().Be(HttpStatusCode.OK);
+
+        // Someone with neither role is locked out, same as every other admin-only page.
+        using var agentClient = await CreateAndLoginAsAsync(_factory, "CallCenterAgent", "Agent");
+        var agentIndexResponse = await agentClient.GetAsync("/DutyRoster/Index");
+        agentIndexResponse.StatusCode.Should().Be(HttpStatusCode.Redirect);
+        HtmlHelpers.PathOf(agentIndexResponse.Headers.Location!).Should().StartWith("/Account/AccessDenied");
+    }
 }

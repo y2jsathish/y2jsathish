@@ -192,4 +192,9 @@ public class EngineerOptionDto
     public string? RegionName { get; set; }
     public bool IsSameRegionAsTicket { get; set; }
     public int OpenTicketCount { get; set; }
+
+    /// <summary>True when the duty roster names this engineer on duty today for the
+    /// ticket's region — the assignment engine picks on-duty engineers first, and the
+    /// manual dropdown surfaces the same signal so a Team Lead can follow the roster too.</summary>
+    public bool IsOnDuty { get; set; }
 }

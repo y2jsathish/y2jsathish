@@ -236,6 +236,28 @@ CREATE SEQUENCE dbo.TicketNumberSequence
     NO CYCLE;
 GO
 
+/* Which Field Engineer covers which region on a given date/shift; the assignment engine
+   prefers whoever is rostered on for the ticket's region and today's date before falling
+   back to plain region + workload matching. */
+CREATE TABLE dbo.DutyRoster
+(
+    Id           INT IDENTITY(1,1) NOT NULL,
+    DutyDate     DATE              NOT NULL,
+    Shift        TINYINT           NOT NULL, -- 1=Morning,2=Evening,3=Night,4=General
+    RegionId     INT               NOT NULL,
+    EngineerId   NVARCHAR(450)     NOT NULL,
+    Notes        NVARCHAR(300)     NULL,
+    IsActive     BIT               NOT NULL CONSTRAINT DF_DutyRoster_IsActive DEFAULT (1),
+    CreatedDate  DATETIME2         NOT NULL CONSTRAINT DF_DutyRoster_CreatedDate DEFAULT (SYSUTCDATETIME()),
+    UpdatedDate  DATETIME2         NULL,
+    CONSTRAINT PK_DutyRoster PRIMARY KEY CLUSTERED (Id),
+    CONSTRAINT UQ_DutyRoster_Engineer_Date_Shift UNIQUE (EngineerId, DutyDate, Shift),
+    CONSTRAINT FK_DutyRoster_RegionMaster FOREIGN KEY (RegionId) REFERENCES dbo.RegionMaster (Id),
+    CONSTRAINT FK_DutyRoster_Users FOREIGN KEY (EngineerId) REFERENCES dbo.Users (Id),
+    CONSTRAINT CK_DutyRoster_Shift CHECK (Shift BETWEEN 1 AND 4)
+);
+GO
+
 /* ---------------------------------------------------------------------
    Ticketing
    --------------------------------------------------------------------- */

@@ -30,3 +30,6 @@ GO
 CREATE INDEX IX_AuditLog_Timestamp ON dbo.AuditLog (Timestamp DESC);
 CREATE INDEX IX_AuditLog_EntityName_EntityId ON dbo.AuditLog (EntityName, EntityId);
 GO
+
+CREATE INDEX IX_DutyRoster_RegionId_DutyDate ON dbo.DutyRoster (RegionId, DutyDate);
+GO

@@ -16,6 +16,7 @@ public interface IUnitOfWork : IDisposable
     IGenericRepository<StatusMaster> Statuses { get; }
     IGenericRepository<Notification> Notifications { get; }
     IGenericRepository<AuditLog> AuditLogs { get; }
+    IGenericRepository<DutyRoster> DutyRosters { get; }
 
     Task<int> SaveChangesAsync(CancellationToken ct = default);
 }

@@ -21,6 +21,7 @@ public class ApplicationDbContext : IdentityDbContext<ApplicationUser, Applicati
     public DbSet<SlaConfiguration> SlaConfigurations => Set<SlaConfiguration>();
     public DbSet<Notification> Notifications => Set<Notification>();
     public DbSet<AuditLog> AuditLogs => Set<AuditLog>();
+    public DbSet<DutyRoster> DutyRosters => Set<DutyRoster>();
 
     protected override void OnModelCreating(ModelBuilder builder)
     {

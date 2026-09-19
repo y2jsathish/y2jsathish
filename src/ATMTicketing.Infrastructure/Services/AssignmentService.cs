@@ -35,10 +35,13 @@ public class AssignmentService : IAssignmentService
     public async Task<ApplicationUser?> FindBestEngineerAsync(Ticket ticket, CancellationToken ct = default)
     {
         var engineerRoleUsers = await _userManager.GetUsersInRoleAsync(Roles.FieldEngineer);
-        var candidateIds = engineerRoleUsers
-            .Where(u => u.IsActive && u.RegionId == ticket.RegionId)
-            .Select(u => u.Id)
-            .ToList();
+        var onDutyIds = await GetOnDutyEngineerIdsAsync(ticket.RegionId, ct);
+
+        // The duty roster is authoritative when it names anyone on duty for this region today;
+        // only fall back to the plain region/workload picker when nobody is rostered on.
+        var candidateIds = onDutyIds.Count > 0
+            ? engineerRoleUsers.Where(u => u.IsActive && onDutyIds.Contains(u.Id)).Select(u => u.Id).ToList()
+            : engineerRoleUsers.Where(u => u.IsActive && u.RegionId == ticket.RegionId).Select(u => u.Id).ToList();
 
         // Region-based match found none -> widen to any active engineer (vendor/zone coverage gaps happen).
         if (candidateIds.Count == 0)
@@ -115,6 +118,9 @@ public class AssignmentService : IAssignmentService
             .ToDictionaryAsync(g => g.EngineerId, g => g.Count, ct);
 
         var regionNames = (await _uow.Regions.GetAllAsync(ct)).ToDictionary(r => r.Id, r => r.RegionName);
+        var onDutyIds = ticketRegionId.HasValue
+            ? await GetOnDutyEngineerIdsAsync(ticketRegionId.Value, ct)
+            : Array.Empty<string>();
 
         return engineers
             .Select(e => new EngineerOptionDto
@@ -123,11 +129,26 @@ public class AssignmentService : IAssignmentService
                 FullName = e.FullName,
                 RegionName = e.RegionId.HasValue ? regionNames.GetValueOrDefault(e.RegionId.Value) : null,
                 IsSameRegionAsTicket = ticketRegionId.HasValue && e.RegionId == ticketRegionId,
-                OpenTicketCount = workloads.GetValueOrDefault(e.Id, 0)
+                OpenTicketCount = workloads.GetValueOrDefault(e.Id, 0),
+                IsOnDuty = onDutyIds.Contains(e.Id)
             })
-            .OrderByDescending(e => e.IsSameRegionAsTicket)
+            .OrderByDescending(e => e.IsOnDuty)
+            .ThenByDescending(e => e.IsSameRegionAsTicket)
             .ThenBy(e => e.OpenTicketCount)
             .ThenBy(e => e.FullName)
             .ToList();
+    }
+
+    /// <summary>Field Engineers the duty roster names on duty for <paramref name="regionId"/>
+    /// today (UTC date). Empty when nobody is rostered on, in which case callers fall back to
+    /// their own region/workload logic rather than treating an empty roster as "nobody works".</summary>
+    private async Task<IReadOnlyCollection<string>> GetOnDutyEngineerIdsAsync(int regionId, CancellationToken ct)
+    {
+        var today = DateOnly.FromDateTime(DateTime.UtcNow);
+        return await _uow.DutyRosters.Query()
+            .Where(d => d.RegionId == regionId && d.DutyDate == today)
+            .Select(d => d.EngineerId)
+            .Distinct()
+            .ToListAsync(ct);
     }
 }

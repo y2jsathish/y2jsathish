@@ -1,0 +1,47 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model DutyRosterEditDto
+@{
+    var isEdit = Model.Id > 0;
+    var regions = ViewBag.Regions as SelectList;
+    var engineers = ViewBag.Engineers as SelectList;
+}
+<div class="modal-header">
+    <h5 class="modal-title">@(isEdit ? "Edit Duty" : "Add Duty")</h5>
+    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+</div>
+<form id="rosterForm" asp-action="@(isEdit ? "Edit" : "Create")" asp-controller="DutyRoster">
+    <div class="modal-body">
+        <input type="hidden" asp-for="Id" />
+        <div class="mb-3">
+            <label asp-for="DutyDate" class="form-label">Duty Date</label>
+            <input type="date" name="DutyDate" value="@Model.DutyDate.ToString("yyyy-MM-dd")" class="form-control" required />
+            <span asp-validation-for="DutyDate" class="text-danger small"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Shift" class="form-label">Shift</label>
+            <select asp-for="Shift" asp-items="Html.GetEnumSelectList<DutyShift>()" class="form-select"></select>
+        </div>
+        <div class="mb-3">
+            <label asp-for="RegionId" class="form-label">Region</label>
+            <select asp-for="RegionId" asp-items="regions" class="form-select">
+                <option value="">Select a region</option>
+            </select>
+            <span asp-validation-for="RegionId" class="text-danger small"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="EngineerId" class="form-label">Field Engineer</label>
+            <select asp-for="EngineerId" asp-items="engineers" class="form-select">
+                <option value="">Select an engineer</option>
+            </select>
+            <span asp-validation-for="EngineerId" class="text-danger small"></span>
+        </div>
+        <div class="mb-3">
+            <label asp-for="Notes" class="form-label">Notes</label>
+            <input asp-for="Notes" class="form-control" placeholder="Optional" />
+        </div>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+        <button type="submit" class="btn btn-primary">Save</button>
+    </div>
+</form>

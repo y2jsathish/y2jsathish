@@ -1,0 +1,110 @@
+@using Microsoft.AspNetCore.Mvc.Rendering
+@model IReadOnlyList<DutyRosterListItemDto>
+@{
+    ViewData["Title"] = "Duty Roster";
+    var regions = ViewBag.Regions as SelectList;
+    var from = (DateOnly)ViewBag.From;
+    var to = (DateOnly)ViewBag.To;
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-2">
+    <div>
+        <h5 class="mb-0">Engineer Duty Roster</h5>
+        <div class="text-muted small">Auto-assignment picks the on-duty engineer for a ticket's region and today's date first; a Team Lead can still manually assign or reassign any ticket.</div>
+    </div>
+    <button class="btn btn-primary btn-sm" id="btnAddRoster"><i class="bi bi-plus-circle"></i> Add Duty</button>
+</div>
+
+<div class="card mb-3">
+    <div class="card-body">
+        <form method="get" class="row g-2 align-items-end">
+            <div class="col-auto">
+                <label class="form-label small mb-0">From</label>
+                <input type="date" name="from" value="@from.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">To</label>
+                <input type="date" name="to" value="@to.ToString("yyyy-MM-dd")" class="form-control form-control-sm" />
+            </div>
+            <div class="col-auto">
+                <label class="form-label small mb-0">Region</label>
+                <select name="regionId" asp-items="regions" class="form-select form-select-sm">
+                    <option value="">All regions</option>
+                </select>
+            </div>
+            <div class="col-auto">
+                <button type="submit" class="btn btn-outline-secondary btn-sm">Filter</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <table class="table table-hover table-sm" id="rosterTable">
+            <thead><tr><th>Date</th><th>Shift</th><th>Region</th><th>Engineer</th><th>Notes</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var r in Model)
+            {
+                <tr>
+                    <td>@r.DutyDate.ToString("d MMM yyyy")</td>
+                    <td>@r.Shift</td>
+                    <td>@r.RegionName</td>
+                    <td>@r.EngineerName</td>
+                    <td>@r.Notes</td>
+                    <td class="text-nowrap">
+                        <button class="btn btn-sm btn-outline-primary btn-edit" data-id="@r.Id"><i class="bi bi-pencil"></i></button>
+                        <button class="btn btn-sm btn-outline-danger btn-delete" data-id="@r.Id"><i class="bi bi-trash"></i></button>
+                    </td>
+                </tr>
+            }
+            </tbody>
+        </table>
+        @if (!Model.Any())
+        {
+            <p class="text-muted mb-0">No duty roster entries in this date range.</p>
+        }
+    </div>
+</div>
+
+<div class="modal fade" id="rosterModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content" id="rosterModalContent"></div>
+    </div>
+</div>
+
+@section Scripts {
+<script>
+$(function () {
+    function openModal(url) {
+        $.get(url, function (html) {
+            $("#rosterModalContent").html(html);
+            $("#rosterModal").modal("show");
+        });
+    }
+
+    $("#btnAddRoster").on("click", function () { openModal("/DutyRoster/Create"); });
+    $("#rosterTable").on("click", ".btn-edit", function () { openModal("/DutyRoster/Edit/" + $(this).data("id")); });
+
+    $("#rosterTable").on("click", ".btn-delete", function () {
+        if (!confirm("Remove this duty roster entry?")) return;
+        $.post("/DutyRoster/Delete", { id: $(this).data("id") }, function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) location.reload();
+        });
+    });
+
+    $(document).on("submit", "#rosterForm", function (e) {
+        e.preventDefault();
+        var form = $(this);
+        $.post(form.attr("action"), form.serialize(), function (result) {
+            atmTicketing.showResult(result);
+            if (result.succeeded) {
+                $("#rosterModal").modal("hide");
+                location.reload();
+            }
+        });
+    });
+});
+</script>
+}

@@ -225,8 +225,8 @@ $(function () {
                 return;
             }
             rows.forEach(function (r) {
-                var label = r.fullName + (r.regionName ? ' — ' + r.regionName : '') +
-                    (r.isSameRegionAsTicket ? ' (same region)' : '') + ' · ' + r.openTicketCount + ' open';
+                var label = (r.isOnDuty ? '★ ' : '') + r.fullName + (r.regionName ? ' — ' + r.regionName : '') +
+                    (r.isSameRegionAsTicket ? ' (same region)' : '') + (r.isOnDuty ? ' (on duty)' : '') + ' · ' + r.openTicketCount + ' open';
                 engineerSelect.append('<option value="' + r.id + '">' + label + '</option>');
             });
         });
