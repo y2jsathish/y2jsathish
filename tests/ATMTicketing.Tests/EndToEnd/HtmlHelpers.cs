@@ -58,6 +58,11 @@ internal static partial class HtmlHelpers
             Content = new FormUrlEncodedContent(formData)
         };
         request.Headers.Add("X-CSRF-TOKEN", token);
+        // jQuery sets this on every $.post/$.ajax call by default; Program.cs's cookie
+        // Events.OnRedirectToAccessDenied/OnRedirectToLogin key off it to return a clean
+        // 401/403 instead of a redirect for exactly these requests — so tests need to send it
+        // too, to exercise the same code path a real browser click does.
+        request.Headers.Add("X-Requested-With", "XMLHttpRequest");
         return await client.SendAsync(request);
     }
 

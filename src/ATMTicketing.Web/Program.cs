@@ -33,6 +33,34 @@ builder.Services.ConfigureApplicationCookie(options =>
     options.SlidingExpiration = true;
     options.Cookie.HttpOnly = true;
     options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+    // Without this, an AJAX call that hits an [Authorize]-protected action while
+    // unauthenticated (401 case) or lacking the required role (403 case) gets silently
+    // redirected (302) to the Login/AccessDenied HTML page instead of a clean status code.
+    // The browser's XHR/fetch layer follows that redirect transparently, so the caller sees
+    // a 200 response whose body is an HTML page, not the JSON error it expects — the click
+    // just appears to do nothing. site.js's global ajaxError handler needs the real status
+    // code to show "you don't have permission" instead of silently swallowing the failure.
+    options.Events.OnRedirectToLogin = context =>
+    {
+        if (IsAjaxRequest(context.Request))
+        {
+            context.Response.StatusCode = StatusCodes.Status401Unauthorized;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
+    options.Events.OnRedirectToAccessDenied = context =>
+    {
+        if (IsAjaxRequest(context.Request))
+        {
+            context.Response.StatusCode = StatusCodes.Status403Forbidden;
+            return Task.CompletedTask;
+        }
+        context.Response.Redirect(context.RedirectUri);
+        return Task.CompletedTask;
+    };
 });
 
 // JWT bearer is offered alongside the cookie scheme so external/mobile REST clients can
@@ -116,6 +144,13 @@ app.MapControllerRoute(
     pattern: "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.Run();
+
+// jQuery sets X-Requested-With on every $.post/$.ajax call by default (all of this app's
+// state-changing buttons — Close, Escalate, Assign, Delete, status updates); the Accept
+// check is a fallback for any client that asks for JSON explicitly instead.
+static bool IsAjaxRequest(HttpRequest request) =>
+    request.Headers["X-Requested-With"] == "XMLHttpRequest" ||
+    request.Headers.Accept.Any(a => a is not null && a.Contains("application/json", StringComparison.OrdinalIgnoreCase));
 
 // Makes the top-level Program class accessible to WebApplicationFactory<Program>
 // in the integration test project (see tests/ATMTicketing.Tests/EndToEnd).

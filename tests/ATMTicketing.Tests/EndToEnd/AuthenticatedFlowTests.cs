@@ -275,6 +275,46 @@ public class AuthenticatedFlowTests : IClassFixture<CustomWebApplicationFactory>
     }
 
     [Fact]
+    public async Task UserWithoutCloseRights_PostingDirectlyToClose_Gets403NotASwallowedRedirect()
+    {
+        // Regression test: the Close form is correctly hidden from a Call Center Agent in the
+        // UI, but before Program.cs's cookie Events override, a POST straight to the endpoint
+        // (or a future button-visibility bug like the ones just fixed) got silently redirected
+        // (302) to the AccessDenied HTML page — which XHR/fetch follows transparently, so the
+        // caller saw a 200 with an HTML body instead of a clean 403, and the button just
+        // appeared to do nothing. This proves the endpoint itself now rejects it properly, so
+        // site.js's global ajaxError handler has a real status code to show a popup for.
+        using var agentClient = await CreateAndLoginAsAsync(_factory, "CallCenterAgent", "Agent");
+
+        var createForm = await agentClient.GetAsync("/Ticket/Create");
+        var createToken = HtmlHelpers.ExtractAntiForgeryToken(await createForm.Content.ReadAsStringAsync());
+        var createResponse = await agentClient.PostAsync("/Ticket/Create", new FormUrlEncodedContent(new Dictionary<string, string>
+        {
+            ["AtmId"] = "1",
+            ["IncidentType"] = "Card Reader Issue",
+            ["CategoryId"] = "1",
+            ["Priority"] = "3",
+            ["Description"] = "Card reader jammed",
+            ["ContactPerson"] = "QA Bot",
+            ["ContactNumber"] = "9999999999",
+            ["__RequestVerificationToken"] = createToken
+        }));
+        var ticketId = HtmlHelpers.PathOf(createResponse.Headers.Location!).Split('/').Last();
+
+        var detailsHtml = await (await agentClient.GetAsync($"/Ticket/Details/{ticketId}")).Content.ReadAsStringAsync();
+        detailsHtml.Should().NotContain("id=\"closeForm\"", "a Call Center Agent should not even see the Close form");
+
+        var closeResponse = await HtmlHelpers.PostWithCsrfAsync(agentClient, "/Ticket/Close", detailsHtml, new Dictionary<string, string>
+        {
+            ["TicketId"] = ticketId,
+            ["ResolutionNotes"] = "n/a",
+            ["ClosureRemarks"] = "n/a"
+        });
+
+        closeResponse.StatusCode.Should().Be(HttpStatusCode.Forbidden);
+    }
+
+    [Fact]
     public async Task TeamLead_CanCloseATicket()
     {
         // Regression test: the server-side CanWorkTickets policy already allowed Team Lead to

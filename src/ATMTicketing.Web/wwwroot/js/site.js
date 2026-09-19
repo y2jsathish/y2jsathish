@@ -18,6 +18,26 @@
         });
     }
 
+    // ---- Global AJAX error popup -------------------------------------------
+    // Every action button (Close, Escalate, Assign, Delete, status updates, ...) relies on
+    // its own success callback to alert the user — but a failed request (wrong role hitting
+    // an [Authorize]-protected action, an expired session, a server error) never reaches that
+    // callback at all, so without this the click just silently does nothing. This one handler
+    // covers every $.post/$.ajax call in the app, so a permission or session problem always
+    // surfaces a clear message instead of looking like the button is broken.
+    $(document).ajaxError(function (_event, jqXHR) {
+        if (jqXHR.status === 401) {
+            alert("Your session has expired. Please log in again.");
+            window.location.href = "/Account/Login";
+        } else if (jqXHR.status === 403) {
+            alert("You don't have permission to perform this action.");
+        } else if (jqXHR.status === 400) {
+            alert("The request could not be processed. Please check your input and try again.");
+        } else if (jqXHR.status >= 500) {
+            alert("Something went wrong on the server. Please try again, and contact support if it keeps happening.");
+        }
+    });
+
     // ---- Dark mode -----------------------------------------------------
     var root = document.documentElement;
     var toggleBtn = document.getElementById("darkModeToggle");
